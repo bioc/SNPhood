@@ -1,0 +1,1 @@
+#' @return the generated \pkg{ggplot2} plot(s) as list for further processing. May contain multiple plots, depending on the function. The plot(s) can then be plotted individually or modified arbitrarily as the user wants. For example, if multiple plots are returned and the plots have been saved in a variable called plots.l, simply type plots.l[[1]] to view the first plot.

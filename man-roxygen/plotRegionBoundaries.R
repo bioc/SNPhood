@@ -1,0 +1,1 @@
+#' @param plotRegionBoundaries Logical(1). Default FALSE. Should the region boundaries be drawn in the plot? If set to TRUE, two vertical lines will be drawn for each region, corresponding to the region boundaries upstream and downstream of the SNP. This visual aid may help to judge the size of the regions and overlaps among regions.

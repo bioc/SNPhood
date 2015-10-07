@@ -1,0 +1,1 @@
+#' @param readGroups Character or NULL. Default NULL. Read groups that should be plotted, specified by their name as obtained by the function \code{annotationReadGroups}). If set to NULL, all read groups will be considered.

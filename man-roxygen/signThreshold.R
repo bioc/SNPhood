@@ -1,0 +1,1 @@
+#' @param signThreshold Numeric(1). Default 0.05. The significance threshold. Must be between 0 and 1. If the parameter belongs to a plotting function, a horizontal line is drawn at the chosen value. For the allelic bias summary plots, p-values below this threshold and the corresponding allelic fractions are highlighted.

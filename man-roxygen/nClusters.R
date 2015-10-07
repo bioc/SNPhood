@@ -1,0 +1,1 @@
+#' @param nClustersVec Numeric. Default 2. The number of clusters the data should be divided into. This can either be a vector or a single value. if multiple clusters are specified, multiple clustering analyses will be performed and for each of them, a plot is produced. make sure to specify the parameter fileToPlot in that case; otherwise, only the last plot may be visible.

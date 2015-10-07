@@ -1,0 +1,1 @@
+#' @param plotEndPos Character(1) or NULL. Default NULL. The end coordinates for which the visualization should be done. Must be a valid number with respect to the chromosome it refers to. If set to NULL and the parameter \code{plotChr} is not NULL, the end coordinates are determined automatically and the full chromosome will be plotted.
