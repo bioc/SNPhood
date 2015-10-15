@@ -812,7 +812,8 @@ setMethod("show",
                           "plot_origBinSNPPosition",
                           "plot_labelBins",
                           "countType",
-                          "readOverlaps",
+                          "readWidth",
+                          "readStartPos",
                           "disableObjectIntegrityChecking",
                           "addResultsElementsAdded"
                           )
@@ -878,42 +879,39 @@ setMethod("show",
             msg = c(msg, "The element plot_origBinSNPPosition in the slot \"internal\" must be a single number.\n")
         }
 
-        if (length(unlist(object@internal$readOverlaps)) > 0) {
+        
             
-            for (i in seq_len(length(object@annotation$readGroups))) {
+        for (i in seq_len(length(object@annotation$readGroups))) {
+            
+            if (!testSubset(names(object@internal$readStartPos)[i], object@annotation$readGroups[i])) {
+                valid = FALSE
+                msg = c(msg, "The names of the read groups are incorrect for the element readStartPos in the slot \"internal\":",paste0(names(object@internal$readStartPos),collapse = ",")," but expected ",paste0(object@annotation$readGroups,collapse = ","),".\n")
+            }
+            
+            for (j in seq_len(length(object@annotation$files))) {
                 
-                if (!testSubset(names(object@internal$readOverlaps)[i], object@annotation$readGroups[i])) {
+                if (!testSubset(names(object@internal$readStartPos[[i]])[j], names(object@annotation$files)[j])) {
                     valid = FALSE
-                    msg = c(msg, "The names of the read groups are incorrect for the element readOverlaps in the slot \"internal\".\n")
+                    msg = c(msg, "The names of the datasets are incorrect for the element readStartPos in the slot \"internal\".\n")
                 }
                 
-                for (j in seq_len(length(object@annotation$files))) {
-                    
-                    if (!testSubset(names(object@internal$readOverlaps[[i]])[j], names(object@annotation$files)[j])) {
-                        valid = FALSE
-                        msg = c(msg, "The names of the datasets are incorrect for the element readOverlaps in the slot \"internal\".\n")
-                    }
-                    
-                    # Check length, should equal nRegions
-                    if (length(object@internal$readOverlaps[[i]][[j]]) != length(object@annotation$regions)) {
-                        valid = FALSE
-                        msg = c(msg, "The dimension of the element readOverlaps are incorrect in the slot \"internal\".\n")
-                    }
-    
-                    
-                    classes = sapply(object@internal$readOverlaps[[i]][[j]], class)
-                    classes.unique = unique(classes)
-                    
-                    for (l in seq_len(length(classes.unique))) {
-                        if (!testSubset(classes.unique[l], c("CompressedRleList", "NULL"))) {
-                            valid = FALSE
-                            msg = c(msg, "The classes of the objects in readOverlaps in the slot \"internal\" must be either \"CompressedRleList\" or NULL.\n")
-                        } 
-                    }
-                   
+                # Check length, should equal nRegions
+                if (length(object@internal$readStartPos[[i]][[j]]) != length(object@annotation$regions)) {
+                    valid = FALSE
+                    msg = c(msg, "The dimension of the element readStartPos are incorrect in the slot \"internal\".\n")
                 }
+
+            
+                for (l in seq_len(length(object@annotation$regions))) {
+                    if (!testInteger(object@internal$readStartPos[[i]][[j]][[l]], lower = 1, any.missing = FALSE)) {
+                        valid = FALSE
+                        msg = c(msg, "At least one element in readStartPos in the slot \"internal\" is invalid and does not contain a vector of type Integer.\n")
+                    } 
+                }
+               
             }
         }
+        
     }
     
     

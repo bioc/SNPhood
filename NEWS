@@ -1,7 +1,31 @@
-version 0.99.0: (2015-08-07)
+CHANGES IN VERSION 0.99.2
+-----------------------
 
-- various bugfixing
+SIGNIFICANT USER-VISIBLE CHANGES
 
-version 0.99.0: (2015-08-07)
+    o the function testForAllelicBias is now substantially faster and parallelized
 
-- various bugfixing
+    o greatly improved memory footprint of the SNPhood object
+
+    o vignette improvements
+
+BUG FIXES
+
+    o various small bugfixes
+
+    o the SNPhood example dataset now also includes the genotype information
+
+
+
+
+CHANGES IN VERSION 0.99.1
+-----------------------
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o vignette improvements
+
+BUG FIXES
+
+    o various small bugfixes
+

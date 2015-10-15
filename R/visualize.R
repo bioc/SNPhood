@@ -120,7 +120,9 @@ plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, co
         corrplot::corrplot.mixed(M2, ...)
     } else {
         ## When the corrplot package is not available
-        warning("Cannot plot correlation results because the corrplot package is not available. Please install it manually.")
+        warning("Default visualization not possible because the corrplot package is not available. You may consider installing it manually for improved visualization.")
+        print(levelplot(M2), scales = list(y = c(-1,1)), xlab = "Datasets", ylab = "Datasets")
+        
     }
     
     
@@ -989,6 +991,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
         
         # Subset with only the significant ones
         plot.df$sign  = plot.df$value <= signThreshold
+        nSign = length(which(plot.df$sign == TRUE))
         
         plot.df$value = -log(plot.df$value ,10)  
         pValueSigThresholdTransformed = -log(signThreshold, 10)
@@ -1035,10 +1038,14 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
     
     mainLabel = paste0(.getBinLabelYAxis(SNPhood.o), " for the region\n",plotChr, ":", plotStartPos,"-", plotEndPos," (covering ",length(regions)," SNPs)")
     if (plotAllelicBiasResults) {
-        mainLabel = paste0("Allelic bias results (", 
+        
+        labelDataset = ifelse(length(datasets) > 1, "datasets", "dataset")
+        mainLabel = paste0("Allelic bias overview (", 
                            SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested[1], " vs. ",
                            SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested[2], 
-                           ") for the region\n",plotChr, ":", plotStartPos,"-", plotEndPos," (covering ",length(regions)," SNPs)")
+                           ") for the region\n",plotChr, ":", plotStartPos,"-", plotEndPos," across ",
+                           length(datasets), " ",labelDataset, " (covering ",length(regions)," SNPs). \n",
+                           "Significant results: ",nSign, " out of ", nrow(plot.df))
         
     }
     
@@ -1154,7 +1161,7 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
     
     # Init if never done before
     if (testNull(SNPhood.o@additionalResults$clustering)) {
-        SNPhood.o@additionalResults$clustering =  list()
+        SNPhood.o@additionalResults$clustering = list()
         
         for (readGroupCur in annotationReadGroups(SNPhood.o)) {
             SNPhood.o@additionalResults$clustering[[readGroupCur]] = list()

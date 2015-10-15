@@ -19,10 +19,24 @@
 {
     stopifnot(is.list(x), is.list(val))
     xnames <- names(x)
-    for (v in names(val)) {
-        x[[v]] <- if (v %in% xnames && is.list(x[[v]]) && is.list(val[[v]])) 
-            .appendList(x[[v]], val[[v]])
-        else c(x[[v]], val[[v]])
+    
+    hasNames = TRUE
+    if (is.null( xnames)) {
+        hasNames = FALSE
+    }
+    
+    for (v in seq_len(length(val))) {
+        
+        if (hasNames) {
+            x[[v]] <- if (v %in% xnames && is.list(x[[v]]) && is.list(val[[v]])) 
+                .appendList(x[[v]], val[[v]])
+            else c(x[[v]], val[[v]])
+        } else {
+            x[[v]] <- if (is.list(x[[v]]) && is.list(val[[v]])) 
+                .appendList(x[[v]], val[[v]])
+            else c(x[[v]], val[[v]])
+        }
+       
     }
     x
 }
@@ -280,35 +294,36 @@
 }
 
 #' @import checkmate
+# TODO. Delete? not needed
 generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
     assertFlag(pairedEndReads)
     
     par.l = list(  
         
-        "isPaired" = TRUE, 
-        "isProperPair" = TRUE ,
-        "isUnmappedQuery" = FALSE, 
-        "hasUnmappedMate" = FALSE, 
-        "isMinusStrand" = NA, 
-        "isMateMinusStrand" = NA,
-        "isFirstMateRead" = NA, 
-        "isSecondMateRead" = NA, 
-        "isNotPrimaryRead" = FALSE,
-        "isNotPassingQualityControls" = FALSE, 
-        "isDuplicate" =  FALSE
+        "readFlag_isPaired" = TRUE, 
+        "readFlag_isProperPair" = TRUE ,
+        "readFlag_isUnmappedQuery" = FALSE, 
+        "readFlag_hasUnmappedMate" = FALSE, 
+        "readFlag_isMinusStrand" = NA, 
+        "readFlag_isMateMinusStrand" = NA,
+        "readFlag_isFirstMateRead" = NA, 
+        "readFlag_isSecondMateRead" = NA, 
+        "readFlag_isNotPrimaryRead" = FALSE,
+        "readFlag_isNotPassingQualityControls" = FALSE, 
+        "readFlag_isDuplicate" =  FALSE
     )
     
     if (!pairedEndReads) {
         
-        par.l$isPaired = NA 
-        par.l$isProperPair = NA 
-        par.l$isUnmappedQuery = NA 
-        par.l$hasUnmappedMate = NA 
-        par.l$isMateMinusStrand = NA 
-        par.l$isFirstMateRead = NA 
-        par.l$isSecondMateRead = NA 
-        par.l$isNotPrimaryRead = NA 
+        par.l$readFlag_isPaired = NA 
+        par.l$readFlag_isProperPair = NA 
+        par.l$readFlag_isUnmappedQuery = NA 
+        par.l$readFlag_hasUnmappedMate = NA 
+        par.l$readFlag_isMateMinusStrand = NA 
+        par.l$readFlag_isFirstMateRead = NA 
+        par.l$readFlag_isSecondMateRead = NA 
+        par.l$readFlag_isNotPrimaryRead = NA 
         
         
     }
@@ -324,12 +339,12 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     # See ?fetchExtendedChromInfoFromUCSC for a list of supported chromosome sizes
     assertChoice(genome, c("hg38", "hg19", "hg18", "mm10", "mm9", "dm3", "sacCer3", "sacCer2"))
     assertFlag(includeChrM)
-    
-    # library("BSgenome") may also be used together with seqlengths(NFKB)=seqlengths(Hsapiens), but this requires the download of hundreds of data for a particular genome
+
+    # library("BSgenome") may also be used together with seqlengths(NFKB)=seqlengths(Hsapiens), 
+    # but this requires the download of hundreds of data for a particular genome
     
     # use a try-catch construct in case the default approach to determine chromosome sizes fails
     result = tryCatch( {
-        
         chromInfo.df  =  suppressWarnings(fetchExtendedChromInfoFromUCSC(genome))
         chromInfo.df = chromInfo.df[which(chromInfo.df$SequenceRole == "assembled-molecule"),]
         
@@ -340,11 +355,15 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
         # Quickly transform to a regular data frame
         chrSizes.df = data.frame(chr = chromInfo.df$UCSC_seqlevel, size = as.numeric(chromInfo.df$UCSC_seqlength))
         
+        rownames(chrSizes.df) = chrSizes.df$chr
+        
+        return(chrSizes.df)
+        
     }, error = function(e) {
         
         warning("Could not obtain chromosome sizes using GenomeInfoDb, try fallback implementation...\n")
         assertChoice(genome, c("hg19","hg38"))
-        
+
         if (genome == "hg19") {
             chrSizes = list(
                 "chr1" = 249250621,
@@ -407,14 +426,15 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
         if (!includeChrM) chrSizes[["chrM"]] = NULL
         # Quickly transform to a regular data frame
         chrSizes.df = data.frame(chr = names(chrSizes), size = as.numeric(as.data.frame(chrSizes)[1,]))
-        
+    
+        rownames(chrSizes.df) = chrSizes.df$chr
+        chrSizes.df
     }
     
     )
     
-    rownames(chrSizes.df) = chrSizes.df$chr
-    
-    chrSizes.df
+    return(result)
+
     
 }
 
@@ -1000,7 +1020,8 @@ detachAllPackages <- function() {
     zeroSds = length(which(SdS == 0))
     
     if (zeroSds > 0) {
-        if (verbose) message(zeroSds," regions had a standard deviation of 0 across all bins. For normalization and plotting purposes, a small value of ", valueToAdd," will be added")
+        if (verbose) message(zeroSds," regions had a standard deviation of 0 across all bins. For normalization and plotting purposes, a small value of ", 
+                             valueToAdd," was added")
         
         SdS = replace(SdS, SdS == 0,  valueToAdd)
     }
@@ -1011,15 +1032,10 @@ detachAllPackages <- function() {
 }
 
 
-
-
 #' @import checkmate 
 #' @importFrom cluster clara silhouette sortSilhouette
 #' @importFrom reshape2 melt
-#' @importFrom lattice levelplot panel.levelplot panel.abline
 #' @importFrom stats complete.cases
-#' @importFrom grDevices gray
-#' @importFrom graphics plot
 .pamClustering  = function(SNPhood.o, target.m, nClustersVec,...){
     
     .checkObjectValidity(SNPhood.o)
@@ -1067,6 +1083,9 @@ detachAllPackages <- function() {
     
 }
 
+
+#' @importFrom lattice levelplot panel.levelplot panel.abline
+#' @importFrom grDevices gray
 .generateClusterPlot <- function(clusterplot.df, SNPhood.o, clustersToPlot = NULL) {
     
     .checkObjectValidity(SNPhood.o)
@@ -1101,4 +1120,40 @@ detachAllPackages <- function() {
                   })
     
     p
+}
+
+
+#' @importFrom BiocParallel multicoreWorkers MulticoreParam
+initBiocParallel <- function(nWorkers) {
+    
+    if (nWorkers > multicoreWorkers()) {
+        warning("Requested ", nWorkers, " CPUs, but only ", multicoreWorkers(), "are available and can be used.")
+        nWorkers = multicoreWorkers()
+    }
+    
+    MulticoreParam(workers = nWorkers, progressBar = TRUE, stop.on.error = TRUE)
+}
+
+execInParallelGen <- function(nCores, iteration, functionName, ...) {
+    
+    res.l = list()
+    # Call the function in parallel
+
+    if (nCores > 1) {
+        
+        res.l = tryCatch( {
+            bplapply(iteration, functionName, ..., BPPARAM = initBiocParallel(nCores))
+
+        }, error = function(e) {
+            warning("An error occured while executing the function with multiple CPUs. Trying again using only only one CPU...")
+            lapply(iteration, functionName, ...)
+        }
+        )
+        
+    } else {
+        res.l = lapply(iteration, functionName, ...)
+    }
+    
+    res.l
+    
 }
