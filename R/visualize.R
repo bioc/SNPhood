@@ -25,8 +25,7 @@
 #' # Using Spearman correlation instead of Pearson
 #' SNPhood.o = plotAndCalculateCorrelationDatasets(SNPhood.o, corMeasure = "spearman")
 #' @export
-#' @import checkmate
-#' @importFrom stats cor
+#' @import checkmate S4Vectors
 #' @importFrom grDevices pdf dev.off
 plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, corMeasure = "pearson", ...) {
     
@@ -777,9 +776,8 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
                         maxWidthLabels = maxWidthLabels, colorPalette = colorPalette, sizePoints = sizePoints, plotGraph = plotGraph, fileToPlot = NULL)
 }
 
-#' @import checkmate 
+#' @import checkmate S4Vectors
 #' @importFrom RColorBrewer brewer.pal
-#' @importFrom stats median
 #' @importFrom grDevices colorRampPalette
 #' @importFrom ggplot2 ggplot aes xlab ylab geom_point coord_cartesian ggtitle geom_vline labs scale_colour_manual scale_x_continuous theme
 .plotRegionFeatures <- function(SNPhood.o, regions = NULL, readGroups = NULL, datasets = NULL, mergeReadGroupCounts = FALSE, plotChr = NULL, plotStartPos = NULL, plotEndPos = NULL, ylim = NULL, plotRegionBoundaries = FALSE, plotRegionLabels = FALSE, plotAllelicBiasResults = FALSE,         

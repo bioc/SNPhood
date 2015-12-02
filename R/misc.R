@@ -1,5 +1,4 @@
-#' @import checkmate 
-# @import data.table
+#' @import checkmate
 #' @importFrom data.table data.table :=
 #' @importFrom stats binom.test
 .calcBinomTestVector <- function(successes, failures, returnType="p.value", indexResult=1, conf.level=0.95) {
@@ -55,9 +54,7 @@
     }
 }
 
-#' @import checkmate
-#' @import Rsamtools
-# @importFrom Rsamtools scanBamFlag
+#' @import checkmate Rsamtools
 .constructScanBamFlagsGen <- function(isPaired = NA, 
                                        isProperPair = NA,
                                        isUnmappedQuery = NA,
@@ -194,9 +191,7 @@
 }
 
 
-#' @import checkmate 
-#' @import Rsamtools
-# @importFrom Rsamtools ScanBamParam scanBam
+#' @import checkmate Rsamtools
 .extractFromBAMGen <- function(regions.gr, file, fieldsToRetrieve = scanBamWhat(), flags, readGroupSpecificity = TRUE, simpleCigar = FALSE, reverseComplement = FALSE, verbose = TRUE) {
     
     assertClass(regions.gr, "GRanges") 
@@ -331,8 +326,7 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     .constructScanBamFlags(par.l)
 }
 
-#' @import checkmate
-#' @importFrom GenomeInfoDb fetchExtendedChromInfoFromUCSC 
+#' @import checkmate GenomeInfoDb
 .getGenomeData <- function(genome, includeChrM = FALSE) {
     
     
@@ -596,11 +590,7 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
 }
 
-#' @import checkmate
-#' @importFrom GenomeInfoDb sortSeqlevels
-#' @import GenomicRanges
-# @importFrom GenomicRanges GRanges
-#' @importFrom IRanges IRanges
+#' @import checkmate S4Vectors IRanges GenomeInfoDb GenomicRanges
 .parseAndProcessUserRegions <- function(par.l, chrSizes.df, verbose = TRUE)  {
     
     assertList(par.l, min.len = 1, all.missing = FALSE)  
@@ -731,7 +721,7 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
 }
 
-#' @import checkmate 
+#' @import checkmate SummarizedExperiment
 #' @importFrom DESeq2 DESeqDataSetFromMatrix estimateSizeFactors counts sizeFactors
 .scaleLibraries <- function(rawCounts.m, verbose = TRUE) {
     

@@ -325,9 +325,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL) {
 # For example, the region between the 3rd and the 7th bases inclusive is [2 ; 7). The BAM, BCFv2, BED, and PSL formats are using the 0-based 
 # coordinate system
 
-#' @import Rsamtools
-# @importFrom Rsamtools scanBamWhat
-#' @import checkmate
+#' @import checkmate Rsamtools
 .extractFromBAM  <-  function(ranges.gr, file, fieldsToRetrieve, par.l, verbose = TRUE) {
     
     # Check types and validity of arguments    
@@ -348,10 +346,8 @@ getDefaultParameterList  <-  function(path_userRegions = NULL) {
                        verbose = verbose)
 }
 
-# @importFrom GenomicRanges start end strand seqnames 
-#' @import GenomicRanges
+#' @import checkmate GenomeInfoDb GenomicRanges
 #' @importFrom BiocParallel bplapply MulticoreParam
-#' @import checkmate
 .createBins  <-  function(userRegions.gr, par.l, applyLastBinStrategy = TRUE, chrSizes.df, verbose = TRUE) {
     
     # Check types and validity of arguments 
@@ -511,11 +507,8 @@ getDefaultParameterList  <-  function(path_userRegions = NULL) {
 }
 
 
-#' @import checkmate 
-#' @import GenomicRanges
-# @importFrom GenomicRanges countOverlaps
+#' @import checkmate IRanges GenomicRanges SummarizedExperiment
 #' @importFrom BiocParallel bplapply MulticoreParam
-#' @importFrom IRanges  IRangesList IRanges
 .calculateOverlapsBin  <-  function(bamObj, par.l, bins.l, nOverlapsRegion.vec) {
     
     # Check types and validity of arguments     
@@ -601,10 +594,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL) {
     
 }
 
-#' @importFrom IRanges as.matrix as.table IRangesList IRanges RleList
-#' @import checkmate
-#' @import GenomicRanges
-# @importFrom GenomicRanges findOverlaps
+#' @import checkmate IRanges GenomicRanges
 #' @importFrom BiocParallel bplapply MulticoreParam
 .calculateOverlapsReads  <-  function(startPos.l, width.l, par.l, bins.l, nOverlapsRegion.vec) {
     
@@ -771,9 +761,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL) {
 #' # Run the main function with the full pipeline
 #' SNPhood.o = analyzeSNPhood (par.l, files.df)
 #' @export
-#' @import checkmate 
-#' @import Rsamtools
-#  @importFrom Rsamtools
+#' @import checkmate Rsamtools
 analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation = FALSE, verbose = TRUE) {
     
     # Check types and validity of arguments   
@@ -1551,10 +1539,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     
 }
 
-#' @import checkmate
-#' @importFrom Biostrings nucleotideFrequencyAt subseq
-#' @import GenomicRanges
-# @importFrom GenomicRanges strand start
+#' @import checkmate GenomicRanges Biostrings
 .getGenotype  <-  function(SNPhood.o, datasetCur, individualCur, fieldsToRetrieve, verbose = TRUE) {
     
     .checkObjectValidity(SNPhood.o)
@@ -1586,9 +1571,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     SNPhood.o
     
 }
-#' @import GenomicRanges
-# @importFrom GenomicRanges mcols start<- end<-
-#' @import checkmate
+#' @import checkmate GenomicRanges
 .getSNPGRangesObj  <-  function(SNPhood.o) {
     
     .checkObjectValidity(SNPhood.o)
@@ -1958,9 +1941,7 @@ nReadGroups <- function(SNPhood.o) {
 #' IDs.vec = annotationRegions(SNPhood.o, asGRangesObj = FALSE)
 #' IDs.gr  = annotationRegions(SNPhood.o, asGRangesObj = TRUE)
 #' @export
-#' @import checkmate
-#' @import GenomicRanges
-# @importFrom GenomicRanges mcols
+#' @import checkmate GenomicRanges
 annotationRegions <- function(SNPhood.o, asGRangesObj = FALSE) {
     
     .checkObjectValidity(SNPhood.o) 
@@ -2488,9 +2469,7 @@ renameBins  <-  function(SNPhood.o, newBinsMapping, verbose = TRUE) {
 #' SNPhood_mod.o = renameRegions(SNPhood.o, mapping)
 #' @seealso \code{\link{renameBins}}, \code{\link{renameDatasets}}, \code{\link{renameReadGroups}}
 #' @export
-#' @import checkmate
-#' @import GenomicRanges
-# @importFrom GenomicRanges mcols<-
+#' @import checkmate GenomicRanges
 renameRegions <-  function(SNPhood.o, newRegionsMapping, verbose = TRUE) {
     
     .checkObjectValidity(SNPhood.o)
@@ -2722,9 +2701,7 @@ deleteDatasets  <-  function(SNPhood.o, datasets = NULL, verbose = TRUE) {
 #' Be careful because the memory consumption due the resulting object may increase considerably.} 
 #' Reduce memory requirements by returning only a subset of SNP regions
 #' @export
-#' @import checkmate
-#' @import GenomicRanges
-# @importFrom GenomicRanges GRanges mcols 
+#' @import checkmate GenomicRanges
 annotationBins2 <- function(SNPhood.o, regions = NULL, fullAnnotation = FALSE, verbose = TRUE) {
     
     # Check types and validity of arguments 
@@ -3042,14 +3019,8 @@ associateGenotypes <- function(SNPhood.o, genotypeMapping, verbose = TRUE) {
 
 
 
-#' @import checkmate
-#' @importFrom GenomeInfoDb seqlevels seqlevels<-
+#' @import checkmate GenomeInfoDb GenomicRanges SummarizedExperiment Biostrings Rsamtools
 #' @importFrom VariantAnnotation scanVcfHeader ScanVcfParam readVcf geno alt ref samples
-#' @import Rsamtools
-# @importFrom Rsamtools bgzip indexTabix TabixFile
-#' @import GenomicRanges
-# @importFrom GenomicRanges start rowRanges
-#' @importFrom Biostrings unlist
 .extractGenotypesVCF <- function(SNPhood.o, file_vcf, sampleNamesObject, sampleNamesFile, yieldSize = NULL, verbose = TRUE) {
     
     # Check types and validity of arguments         

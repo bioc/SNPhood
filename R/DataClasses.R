@@ -161,7 +161,7 @@ setMethod("parameters", "SNPhood", function(object, ...) {object@config})
 #' str(counts(SNPhood.o, readGroup = c("maternal", "paternal"), dataset = 1))
 #' @seealso \code{\link{SNPhood}}, \code{\link{enrichment}}
 #' @export
-#' @importFrom BiocGenerics counts
+#' @import BiocGenerics
 setMethod("counts", "SNPhood", function(object, type = "binned", readGroup = NULL, dataset = NULL, ...) {.getCounts(object, type, readGroup, dataset)})
 
 #' @import checkmate
@@ -322,7 +322,7 @@ setMethod("enrichment", "SNPhood", function(object, readGroup = NULL, dataset = 
 #' @docType methods
 #' @rdname annotation-methods
 #' @aliases annotation
-#' @importFrom BiocGenerics annotation
+#' @import BiocGenerics
 #' @examples 
 #' data(SNPhood, package="SNPhood")
 #' annotation(SNPhood.o)
@@ -378,8 +378,7 @@ setMethod("annotation", "SNPhood", function(object, elements = NULL, ...) {.getA
 #' head(results(SNPhood.o, type="allelicBias", elements = "parameters"))
 #' head(results(SNPhood.o, type="allelicBias"))
 #' @export
-#' @import checkmate
-#' @importFrom utils head
+#' @import checkmate S4Vectors
 results <- function(SNPhood.o, type, elements = NULL) {
     
     # Check types and validity of arguments 
@@ -610,8 +609,7 @@ setMethod("show",
 # SNPhood OBJECT VALIDITY #
 
 
-#' @import checkmate
-#' @importFrom methods validObject
+#' @import methods checkmate
 .checkObjectValidity <- function(object) {
 
     assertClass(object, "SNPhood")
@@ -627,9 +625,7 @@ setMethod("show",
     
 }
 
-#' @import checkmate
-#' @import GenomicRanges
-# @importFrom GenomicRanges mcols
+#' @import checkmate GenomicRanges
 .validSNPhoodObj <- function(object) {
     
     valid = TRUE
