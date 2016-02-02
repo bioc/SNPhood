@@ -201,7 +201,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     region = .checkAndConvertRegionArgument(SNPhood.o, region, nullAllowed = FALSE, maxLength = 1) 
     dataset = .checkAndConvertDatasetArgument(SNPhood.o, dataset, nullAllowed = FALSE, maxLength = 1)
     
-    assertPercentage(signThreshold)
+    assertNumber(signThreshold, lower = 0, upper = 1)
     
     assert(checkNull(readGroupColors),
            checkCharacter(readGroupColors, min.chars = 1, len = nReadGroups(SNPhood.o))
@@ -838,8 +838,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
         pdf(fileToPlot)
     }
     
-    assertPercentage(signThreshold)
-    
+    assertNumber(signThreshold, lower = 0, upper = 1)
     
     if (!testNull(plotChr)) {
         
@@ -1770,7 +1769,7 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     assertIntegerish(nDatasets, any.missing = FALSE, len = 1, lower = 1)
     assertIntegerish(nReadGroups, any.missing = FALSE, len = 1, lower = 1)
     assertChoice(paletteName, names(allowedPalettesMaxColors))
-    assertPercentage(saturationMin)
+    assertNumber(saturationMin, lower = 0, upper = 1)
     assertFlag(deleteFirst)
     assertFlag(deleteLast)
     

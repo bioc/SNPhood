@@ -1,3 +1,12 @@
+CHANGES IN VERSION 1.0.2
+-----------------------
+
+BUG FIXES
+
+    o fixed an issue that arose because of changes in the checkmate package with the function assertPercentage, which were removed from the package and used in SNPhood
+
+
+
 CHANGES IN VERSION 0.99.2
 -----------------------
 

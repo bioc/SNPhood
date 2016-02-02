@@ -9,7 +9,7 @@
     assertIntegerish(failures, lower = 0) 
     assertChoice(returnType, c("p.value","conf.int", "statistic", "parameter", "estimate", "null.value", "alternative", "method", "data.name"))
     assertInt(indexResult, lower = 1) 
-    assertPercentage(conf.level)
+    assertNumber(conf.level, lower = 0, upper = 1)
     
     dt  =  data.table(successes, failures)
     dt[, pp:=binom.test(c(successes, failures), n = NULL, conf.level = conf.level)[returnType][[1]][indexResult], by = list(successes, failures)]$pp
