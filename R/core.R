@@ -1664,7 +1664,7 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, calcBa
     
     assertSubset(readGroups, annotationReadGroups(SNPhood.o))
     assertCharacter(readGroups, len = 2)
-    assertNumber(conf.level, lower = 0, upper = 1)
+    assertNumber(confLevel, lower = 0, upper = 1)
     assertFlag(calcBackgroundDistr)
     if (calcBackgroundDistr) {
         assertInt(nRepetitions, lower = 1)

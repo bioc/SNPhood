@@ -195,8 +195,18 @@ The genotypes can then be used in various visualizations (see the different plot
 ## Normalization of reads counts and enrichment calculation
 
 Raw read counts among datasets can be misleading and are difficult to compare. To make reads comparable across individuals, *SNPhood* currently provides two different normalization procedures: 
-1. Normalization using input DNA: this will correct not only across samples but also for the accessibility of a given region and will allow a comparison across regions. This method requires that input DNA has been sequenced deep enough to provide a decent coverage across the entire genome. It is analogous to the input normalization by commonly used peak callers, such as MACS2.
-2. Normalization by library size:  this will only correct for library size and thus allow a comparison across libraries. A comparison across regions is not necessarly valid since regions can differ in their accessibility. 
+
+1. Normalization using input DNA: this will correct not only across samples but also for the accessibility of a given region and will allow a comparison across regions. This method requires that input DNA has been sequenced deep enough to provide a decent coverage across the entire genome. It is analogous to the input normalization by commonly used peak callers such as MACS2 [7].
+2. Normalization by library size:  this will only correct for library size and thus allow a comparison across libraries. Note that a comparison across regions is not necessarly valid since regions can differ in their accessibility. 
+
+The following figure gives an overview of the two different normalization procedures and how they function:
+
+<div align="center">
+<figure>
+<img src="figs/normDetails.png" height="400px"/>
+<figcaption><i>Figure 8 - Schematics of the different normalization procedures and how they interact.</i></figcaption>
+</figure>
+</div>
 
 
 
@@ -212,7 +222,7 @@ Normalizing read counts by input is possible when the following criteria are met
 
 Note that if this normalization is performed, this overrides the value of the parameter *normAmongEachOther* to FALSE because this is already integrated within the input normalization procedure.
 
-Specifically, input normalization works as follows. First, read counts between input and signal are normalized to account for differences in library size (see below for details). Thus, the resulting enrichment is based on the normalized and **not** the raw read counts (i.e., after applying a correction by size factors using the `r Biocpkg("DeSeq2")` package, see next section) for both input and signal. Second, for each bin of each SNP region, the maximum of the following three numbers is taken as basis for calculating the enrichment:
+Specifically, input normalization works as follows. First, read counts between input and signal are normalized to account for differences in library size (see below for details). Thus, the resulting enrichment is based on the normalized and **not** the raw read counts (i.e., after applying a correction by size factors using the `r Biocpkg("DeSeq2")` [3] package, see next section) for both input and signal. Second, for each bin of each SNP region, the maximum of the following three numbers is taken as basis for calculating the enrichment:
 
 * the average number of input reads per bin **across all user regions** 
 * the average number of input reads per bin **for that particular user region**
@@ -226,7 +236,7 @@ The following illustration summarizes how input normalization is performed for e
 <div align="center">
 <figure>
 <img src="figs/inputNormalizationScheme.png" height="300px"/>
-<figcaption><i>Figure 8 - Schematics of how the input normalization works. See text for details.</i></figcaption>
+<figcaption><i>Figure 9 - Schematics of how the input normalization works. See text for details.</i></figcaption>
 </figure>
 </div>
 
@@ -245,16 +255,23 @@ After this normalization, read counts are numeric values that reflect the normal
 
 The normalization is done using the `r Biocpkg("DeSeq2")` package by creating a virtual sample and determining size factors for each library that reflect the normalization factor, based on the total number of read counts per user region (i.e., before binning). For more details, see the `r Biocpkg("DeSeq2")` package and Love et al. (2014) [3].
 
+### Normalization when pooling datasets
 
-## Allele-specific analyses
+As indicated in Figure 9, normalization may happen multiple times. Because *SNPhood* supports multiple datasets to be pooled together to one dataset, normalization steps may be required for the pooling step, independent of subsequent normalization steps. This is true for both signal and corresponding controls if multiple of them should be pooled.
 
 
-### Allelic bias tests
+## Allelic bias tests
+
 
 The function *testForAllelicBiases*  performs a binomial test to test for allelic biases given the read counts of two read groups (e.g., maternal vs. paternal). The prerequisite for this type of analysis is that the reads have been mapped to the paternal and maternal genome (e.g. as described in Kasowski et al. [4]). The binomial test is performed on each bin across all regions, and p-values, estimates for the allelic fraction and corresponding confidence intervals are reported. Note that the p-values are not adjusted for multiple testing (see below).
 
 To determine the significance across regions, one can select the lowest p-value for each region. This ensures to select the bin with the most power (which often has the highest number of reads) to detect allelic bias. However, the tests for bins are not independent from one another and the p-values are not adjusted for multiple testing.
-We therefore implemented a permutation-based procedure to control the false discovery rate (FDR). Briefly, for each bin, we generate an empirical p-value distribution by randomly but equally assigning each overlapping read to one of the two read groups, perform a binomial test and select the most significant p-value for each region. For a given p-value threshold the FDR is then calculated as the fraction of significant regions identified from the random by the total number of significant regions. 
+We therefore implemented a permutation-based procedure to control the false discovery rate (FDR). Briefly, for each bin, we generate an empirical p-value distribution by randomly but equally assigning each overlapping read to one of the two read groups, perform a binomial test and select the most significant p-value for each region. For a given p-value threshold the FDR is then calculated as the fraction of significant regions identified from the random by the total number of significant regions. We note that the FDR calculation is based on the full set of user regions (i.e., globally) rather than individually for each one, therefore it may overestimate the FDR slightly if there are big read count differences among the user regions.
+
+In summary, we use the p-values from the binomial test as a test statistic to calculate the FDR with a random background model rather than directly, and our approach is therefore conceptually similar to what was done in Alexandrov et al. 2013 [10], section "Statistical analysis of relationships between age and mutations". For this reason, the potential overdispersion in the data that is associated with the count nature of the reads is also alleviated. We also note that the real difficulty of detecting alleic biases is to reliably distinguish the paternal and maternal read counts in the first place, which has to be done beforehand currently.
+
+More sophisticated models may also be used for the allelic bias tests. In essence, instead of using a binomial distribution, an alternative distribution may be used to account for the overdispersion that is inherently associated with the count nature of the data. In the following, we describe a few options how this may be done. One possibility is to use the package `r Biocpkg("MBASED")` [12] that allows for an overdispersion parameter to be included. A strategy how to estimate the overdispersion is described in the corresponding paper, section 2.2.7. in the supplement. Essentialy, one maximizes the NB-likliehood over the "normal" samples given a mean based on a reference allele frequency (e.g. 0.5). For more details, see, for example, [here](http://www.r-bloggers.com/fitting-a-model-by-maximum-likelihood) and the CRAN package *maxLik*. Alternatively, one can try a "method of moments approach" since the mean is known, so the variance may be calculated as mean + dispersion * mean^2. For details, see, for example, [here](https://matloff.wordpress.com/2015/12/20/the-generalized-method-of-moments-and-the-gmm-package/). It is also possible to use the `r Biocpkg("DESeq2")` [3] or `r Biocpkg("edgeR")` [11] Bioconductor packages for estimating allele-specific expression. For details, see, for example, [here](https://support.bioconductor.org/p/73239/) or [here](https://support.bioconductor.org/p/75182/).
+
 
 
 ## Genotype integration
@@ -597,3 +614,9 @@ Please report any bug that you encounter as well as any feature request that you
 [8] Wickham, H. (2009). ggplot2: elegant graphics for data analysis. Springer Science & Business Media.
 
 [9] Huber, W., Carey, V. J., Gentleman, R., Anders, S., Carlson, M., Carvalho, B. S., ... & Morgan, M. (2015). Orchestrating high-throughput genomic analysis with Bioconductor. Nature methods, 12(2), 115-121.
+
+[10] Alexandrov, L. B., Nik-Zainal, S., Wedge, D. C., Aparicio, S. A., Behjati, S., Biankin, A. V., ... & Boyault, S. (2013). Signatures of mutational processes in human cancer. Nature, 500(7463), 415-421.
+
+[11] Robinson, M. D., McCarthy, D. J., & Smyth, G. K. (2010). edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. Bioinformatics, 26(1), 139-140.
+
+[12] Mayba, O., Gilbert, H. N., Liu, J., Haverty, P. M., Jhunjhunwala, S., Jiang, Z., ... & Zhang, Z. (2014). MBASED: allele-specific expression detection in cancer tissues and cell lines. Genome Biol, 15(8), 405.
