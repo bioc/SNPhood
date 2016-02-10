@@ -14,8 +14,12 @@ output:
   BiocStyle::html_document
 ---
 
-# Motivation and Necessity
-<a name="section1"></a> 
+# Motivation, Necessity, Package Scope and Limitations
+
+<a name="section1"></a>
+
+## Motivation and Necessity
+
 
 <div align="center">
 <figure>
@@ -25,7 +29,32 @@ output:
 </div>
 <br/><br/>
 
-To date, thousands of single nucleotide polymorphisms (SNPs) have been found to be associated with complex traits and diseases. However, the vast majority of these disease-associated SNPs lie in the non-coding part of the genome, and are likely to affect regulatory elements, such as enhancers and promoters, rather than the function of a protein. Thus, to understand the molecular mechanisms underlying genetic traits and diseases, it becomes increasingly important to study the effect of a SNP on nearby molecular traits such as chromatin environment or transcription factor (TF) binding. Towards this aim, we developed *SNPhood*, a user-friendly *Bioconductor* [9] R package to investigate, quantify and visualize the local epigenetic neighborhood of a set of SNPs in terms of chromatin marks, TF binding sites using data from NGS experiments. *SNPhood* comprises a set of easy-to-use functions to extract, normalize and quantify reads for a genomic region, perform data quality checks, normalize read counts using input files, to investigate the binding pattern using unsupervised clustering. In addition, *SNPhood* can be employed for identifying and visualising allele-specific binding patterns around SNPs using a robust permutation based FDR procedure. The regions around each SNP can be binned in a user-defined fashion to allow for analyses ranging from very broad regions to highly detailed investigation of specific binding shapes. Importantly, *SNPhood* supports the integration with genotype information to investigate and visualize genotype-specific binding patterns. 
+To date, thousands of single nucleotide polymorphisms (SNPs) have been found to be associated with complex traits and diseases. However, the vast majority of these disease-associated SNPs lie in the non-coding part of the genome, and are likely to affect regulatory elements, such as enhancers and promoters, rather than the function of a protein. Thus, to understand the molecular mechanisms underlying genetic traits and diseases, it becomes increasingly important to study the effect of a SNP on nearby molecular traits such as chromatin environment or transcription factor (TF) binding. Towards this aim, we developed *SNPhood*, a user-friendly Bioconductor [9] R package to investigate, quantify and visualize the local epigenetic neighborhood of a set of SNPs in terms of chromatin marks, TF binding sites using data from NGS experiments. *SNPhood* comprises a set of easy-to-use functions to extract, normalize and quantify reads for a genomic region, perform data quality checks, normalize read counts using input files, to investigate the binding pattern using unsupervised clustering. In addition, *SNPhood* can be employed for identifying and visualizing allele-specific binding patterns around SNPs using a robust permutation based FDR procedure. The regions around each SNP can be binned in a user-defined fashion to allow for analyses ranging from very broad regions to highly detailed investigation of specific binding shapes. Importantly, *SNPhood* supports the integration with genotype information to investigate and visualize genotype-specific binding patterns.
+
+
+## Package scope and limitations
+<a name="section5"></a>
+
+In this section, we want explicitly mention the designated scope of the *SNPhood* package, its limitations and additional / companion packages that may be used subsequently or beforehand.
+
+First, **let's be clear what *SNPhood* is NOT**:
+
+* *SNPhood* is **NOT a peak caller of ChIP-Seq datasets** and works in an orthogonal manner instead. See below for more details and differences.
+* *SNPhood* is **NOT a tool for proper or designated quality control (QC) of ChIP-Seq datasets** and offers only rudimentary QC. For more details and a designated discussion about this issue, see <a href="#section6-4">here</a>.
+* *SNPhood* is **NOT a tool for the analysis of Quantitative Trait Loci (QTLs)**. For QTL analyses, designated tools such as WASP [13] or `r CRANpkg("MatrixEQTL")` [14] are available.
+
+
+
+**Instead, *SNPhood* aims to fill an existing gap for an increasingly common task**: Current workflows for analyzing ChIP-Seq data typically involve peak calling, which summarizes the signal of each binding event into two numbers: enrichment and peak size, and usually neglects additional factors like binding shape. However, when a set of regions of interest (ROI) is already at hand - e.g. GWAS SNPs, quantitative trait loci (QTLs), etc. - a comprehensive and unbiased analysis of the molecular neighborhood of these regions, potentially in combination with allele-specific (AS) binding analyses will be more suited to investigate the underlying (epi-)genomic regulatory mechanisms than simply comparing peak sizes. Currently, such analyses are often carried out “by hand” using basic NGS tools and genome-browser like interfaces to visualize molecular phenotype data independently for each ROI. A tool for systematic analysis of the local molecular neighborhood of regions of interest is currently lacking.
+*SNPhood* fills this gap to investigate, quantify, and visualize the local epigenetic neighborhood of regions of interest using chromatin or TF binding data from NGS experiments. **It provides a set of tools that are largely complimentary to currently existing software for analyzing ChIP-Seq data**.
+
+<div align="center">
+<figure>
+<img src="figs/Comparison.png" height="400px"/>
+<figcaption><i>Figure 2 - *SNPhood* feature summary and scope. Comparison and distinction of SNPhood with regard to commonly used tools for ChIP-Seq/RNA-Seq data. Green, yellow and red: Feature fully, partially or not supported, respectively. </i></figcaption>
+</figure>
+</div>
+
 
 
 # Basic Mode of Action
@@ -37,13 +66,13 @@ In summary, the basic mode of action can be summarized in the following schemati
 <div align="center">
 <figure>
 <img src="figs/SNPhood_workflow_simple.png" height="600px"/>
-<figcaption><i>Figure 2 - Basic mode of action of *SNPhood*. See also Figure 3 for a more detailed schematic.</i></figcaption>
+<figcaption><i>Figure 3 - Basic mode of action of *SNPhood*. See also Figure 4 for a more detailed schematic.</i></figcaption>
 </figure>
 </div>
 
 <br/><br/>
 
-More specifically, the mode of action and basic workflow is as follows (see also Figure 3):
+More specifically, the mode of action and basic workflow is as follows (see also Figure 4):
 
 1. Initiate the analysis and set all parameters accordingly
 2. Parse and validate SNPs (or other user defined genomic regions)
@@ -71,7 +100,7 @@ The following Figure is an extension of Figure 2 and depicts in more detail the 
 <div align="center">
 <figure>
 <img src="figs/SNPhood_workflow_detailed.png" height="1200px"/>
-<figcaption><i>Figure 3 - Basic mode of action of *SNPhood* (extended).</i></figcaption>
+<figcaption><i>Figure 4 - Basic mode of action of *SNPhood* (extended).</i></figcaption>
 </figure>
 </div>
 
@@ -86,7 +115,7 @@ The following input data are required for the *SNPhood* package, which is also v
 <div align="center">
 <figure>
 <img src="figs/inputFileFlexibility.png" height="200px" alt="Caption to image">
-<figcaption><i>Figure 4 - Supported formats of the user regions file. See section <a href="#section6">*Parameters*</a> for details.</i></figcaption>
+<figcaption><i>Figure 5 - Supported formats of the user regions file. See section <a href="#section6">*Parameters*</a> for details.</i></figcaption>
 </figure>
 </div>
 
@@ -121,7 +150,7 @@ In summary, the following data can be integrated into *SNPhood*:
 <div align="center">
 <figure>
 <img src="figs/Input.png" height="400px"/>
-<figcaption><i>Figure 5 - Schematics of the input data that are required or optional in *SNPhood*.</i></figcaption>
+<figcaption><i>Figure 6 - Schematics of the input data that are required or optional in *SNPhood*.</i></figcaption>
 </figure>
 </div>
 
@@ -136,9 +165,10 @@ The main function *analyzeSNPhood* returns an object of the class *SNPhood*. It 
 
 We now explain various additional methodological and technical details in more detail.
 
+
 ## Plots
 
-All plots are generated with *ggplot2* [8] and are either saved directly in the *SNPhood* object that serves as input for the respective plotting function or returned by the function so that users can modify and replot them as desired. See the help pages of the plotting functions for details.
+All plots are generated with `r CRANpkg("ggplot2")` [8] and are either saved directly in the *SNPhood* object that serves as input for the respective plotting function or returned by the function so that users can modify and replot them as desired. See the help pages of the plotting functions for details. To edit plots, save them in a variable (e.g., plot = plotBinCounts(...)) and either edit them directly by modifying the internal structure of the ggplot list object (e.g., plot$labels$colour = "NEW LEGEND LABEL" to change the legend label) or by adding features in the usual ggplot style, such as plot + geom_lines(...) .
 
 ## Parameters
 
@@ -151,6 +181,19 @@ We explain the supported parameters in more detail in the section "Parameters" (
 *SNPhood* supports files in BAM format. All BAM files must contain aligned reads and a valid header with, for example, chromosome names and read groups (if applicable). If a corresponding index file with the file ending .bai does not exist for a particular BAM file, it will be created during execution of the main function.
 
 Note that if you already have your BAM files represented in an object of class *BamFile* or *BamFileList* from the `r Biocpkg("Rsamtools")` package, this can easily be integrated into the *SNPhood* framework. See the help pages of the function *collectFiles* for details.
+
+
+## Quality control (QC)
+<a name="section6-4"></a>
+
+As discussed <a href="#section5">beforehand</a>, ***SNPhood* is not suitable for ChIP-Seq QC** and has never been designed as such. It is important to assess potential biases such as GC, mapping, contamination or other biases beforehand using dedicated tools both within and outside the Bioconductor framework. Example packages from Bioconductor include `r Biocpkg("htSeqTools")`, `r Biocpkg("ChIPQC")`, `r Biocpkg("similaRpeak")` or `r Biocpkg("chipseq")` (see <a href="https://www.bioconductor.org/packages/release/BiocViews.html#">Bioconductor</a> for a complete list).
+Alternatively, external software such as *FASTQC* [11] or *Chance* [12] may also be used.
+
+Nevertheless, *SNPhood* offers some rudimentary QC mechanisms that accompany designated QC tools:
+
+* the user can specifically decide which reads from the input files should be included based on their flags, thereby allowing to exclude reads with poor quality. For more details, see <a href="#section6-6">here</a>.
+* the designated QC function *plotAndCalculateCorrelationDatasets* may be used to identify datasets that are weakly correlated with other datasets given the user-defined regions of interest based on pairwise correlation of the raw read values (i.e., the number of reads that overlap each region of interest). For example, one would usually expect that the correlation coefficients are very high among replicate samples and relatively high among different samples as well. For more details, see also the R help of the function and the workflow vignette.
+
 
 ## Extending user regions and binning
 <a name="section5-3"></a> 
@@ -168,14 +211,14 @@ Read counts (and enrichment values, if applicable) are calculated specifically f
 
 ## Read extraction
 
-Read extraction for the binned user regions is done using the `r Biocpkg("Rsamtools")` package. Noteworthy, for increased flexibility and in analogy to read extraction in the `r Biocpkg("Rsamtools")` package, it is possible to extract only reads with particular BAM flags (e.g. not marked as PCR duplicate, passed quality controls, have a properly aligned mate, etc). Read flags can be set using the parameters starting with *readFlag_* accordingly. In addition, the parameters *strand*, *readGroupSpecific*, *readFlag_reverseComplement*, and *readFlag_simpleCigar* allow additional control over which reads are returned (see the `r Biocpkg("Rsamtools")` package and below for more details). If the parameter *strand* is set to *sense* or *antisense* and the original user regions have been specified strand-specifically, for example, reads are filtered according to the value of  *strand*. For a graphical depiction, see also Figure 6.
+Read extraction for the binned user regions is done using the `r Biocpkg("Rsamtools")` package. Noteworthy, for increased flexibility and in analogy to read extraction in the `r Biocpkg("Rsamtools")` package, it is possible to extract only reads with particular BAM flags (e.g. not marked as PCR duplicate, passed quality controls, have a properly aligned mate, etc). Read flags can be set using the parameters starting with *readFlag_* accordingly. In addition, the parameters *strand*, *readGroupSpecific*, *readFlag_reverseComplement*, and *readFlag_simpleCigar* allow additional control over which reads are returned (see the `r Biocpkg("Rsamtools")` package and below for more details). If the parameter *strand* is set to *sense* or *antisense* and the original user regions have been specified strand-specifically, for example, reads are filtered according to the value of  *strand*. For a graphical depiction, see also Figure 7.
 
 Note that read extraction out of BAM files can be time-consuming, especially if the number of user regions is large or if a high number of reads overlap with the user regions.
 
 <div align="center">
 <figure>
 <img src="figs/readFiltering.png" height="1000px"/>
-<figcaption><i>Figure 6 - Schematics of how read filtering with respect to strand and read groups is performed in *SNPhood*.</i></figcaption>
+<figcaption><i>Figure 7 - Schematics of how read filtering with respect to strand and read groups is performed in *SNPhood*.</i></figcaption>
 </figure>
 </div>
 
@@ -188,7 +231,7 @@ The genotypes can then be used in various visualizations (see the different plot
 <div align="center">
 <figure>
 <img src="figs/genotype.png" height="400px"/>
-<figcaption><i>Figure 7 - Schematics of how the genotype distribution for the user positions (e.g, SNPs) is determined.</i></figcaption>
+<figcaption><i>Figure 8 - Schematics of how the genotype distribution for the user positions (e.g, SNPs) is determined.</i></figcaption>
 </figure>
 </div>
 
@@ -198,15 +241,6 @@ Raw read counts among datasets can be misleading and are difficult to compare. T
 
 1. Normalization using input DNA: this will correct not only across samples but also for the accessibility of a given region and will allow a comparison across regions. This method requires that input DNA has been sequenced deep enough to provide a decent coverage across the entire genome. It is analogous to the input normalization by commonly used peak callers such as MACS2 [7].
 2. Normalization by library size:  this will only correct for library size and thus allow a comparison across libraries. Note that a comparison across regions is not necessarly valid since regions can differ in their accessibility. 
-
-The following figure gives an overview of the two different normalization procedures and how they function:
-
-<div align="center">
-<figure>
-<img src="figs/normDetails.png" height="400px"/>
-<figcaption><i>Figure 8 - Schematics of the different normalization procedures and how they interact.</i></figcaption>
-</figure>
-</div>
 
 
 
@@ -255,22 +289,19 @@ After this normalization, read counts are numeric values that reflect the normal
 
 The normalization is done using the `r Biocpkg("DeSeq2")` package by creating a virtual sample and determining size factors for each library that reflect the normalization factor, based on the total number of read counts per user region (i.e., before binning). For more details, see the `r Biocpkg("DeSeq2")` package and Love et al. (2014) [3].
 
-### Normalization when pooling datasets
-
-As indicated in Figure 9, normalization may happen multiple times. Because *SNPhood* supports multiple datasets to be pooled together to one dataset, normalization steps may be required for the pooling step, independent of subsequent normalization steps. This is true for both signal and corresponding controls if multiple of them should be pooled.
-
 
 ## Allelic bias tests
 
 
-The function *testForAllelicBiases*  performs a binomial test to test for allelic biases given the read counts of two read groups (e.g., maternal vs. paternal). The prerequisite for this type of analysis is that the reads have been mapped to the paternal and maternal genome (e.g. as described in Kasowski et al. [4]). The binomial test is performed on each bin across all regions, and p-values, estimates for the allelic fraction and corresponding confidence intervals are reported. Note that the p-values are not adjusted for multiple testing (see below).
+The function *testForAllelicBiases*  performs a statistical test to test for allelic biases given the read counts of two read groups (e.g., maternal vs. paternal). The prerequisite for this type of analysis is that the reads have been reliably mapped to the paternal and maternal genome (e.g. as described in Kasowski et al. [4]). This task is not trivial and not in the scope of *SNPhood*, which is why dedicated external tools must be used.
 
-To determine the significance across regions, one can select the lowest p-value for each region. This ensures to select the bin with the most power (which often has the highest number of reads) to detect allelic bias. However, the tests for bins are not independent from one another and the p-values are not adjusted for multiple testing.
-We therefore implemented a permutation-based procedure to control the false discovery rate (FDR). Briefly, for each bin, we generate an empirical p-value distribution by randomly but equally assigning each overlapping read to one of the two read groups, perform a binomial test and select the most significant p-value for each region. For a given p-value threshold the FDR is then calculated as the fraction of significant regions identified from the random by the total number of significant regions. We note that the FDR calculation is based on the full set of user regions (i.e., globally) rather than individually for each one, therefore it may overestimate the FDR slightly if there are big read count differences among the user regions.
 
-In summary, we use the p-values from the binomial test as a test statistic to calculate the FDR with a random background model rather than directly, and our approach is therefore conceptually similar to what was done in Alexandrov et al. 2013 [10], section "Statistical analysis of relationships between age and mutations". For this reason, the potential overdispersion in the data that is associated with the count nature of the reads is also alleviated. We also note that the real difficulty of detecting alleic biases is to reliably distinguish the paternal and maternal read counts in the first place, which has to be done beforehand currently.
+To determine the significance across regions, one can select the lowest p-value for each region. This ensures to select the bin with the most power (which often has the highest number of reads) to detect allelic bias. However, the tests for bins are not independent from one another and the p-values are not adjusted for multiple testing. For this reason, we emphasize that the obtained p-values should not be used as anything else than a test statistic (see below). 
 
-More sophisticated models may also be used for the allelic bias tests. In essence, instead of using a binomial distribution, an alternative distribution may be used to account for the overdispersion that is inherently associated with the count nature of the data. In the following, we describe a few options how this may be done. One possibility is to use the package `r Biocpkg("MBASED")` [12] that allows for an overdispersion parameter to be included. A strategy how to estimate the overdispersion is described in the corresponding paper, section 2.2.7. in the supplement. Essentialy, one maximizes the NB-likliehood over the "normal" samples given a mean based on a reference allele frequency (e.g. 0.5). For more details, see, for example, [here](http://www.r-bloggers.com/fitting-a-model-by-maximum-likelihood) and the CRAN package *maxLik*. Alternatively, one can try a "method of moments approach" since the mean is known, so the variance may be calculated as mean + dispersion * mean^2. For details, see, for example, [here](https://matloff.wordpress.com/2015/12/20/the-generalized-method-of-moments-and-the-gmm-package/). It is also possible to use the `r Biocpkg("DESeq2")` [3] or `r Biocpkg("edgeR")` [11] Bioconductor packages for estimating allele-specific expression. For details, see, for example, [here](https://support.bioconductor.org/p/73239/) or [here](https://support.bioconductor.org/p/75182/).
+We therefore implemented a permutation-based procedure to control the false discovery rate (FDR). In summary, we use the p-values from the binomial test as a test statistic to calculate the FDR with a random background model rather than directly, and our approach is therefore conceptually similar to what was done in Alexandrov et al. 2013 [15], section "Statistical analysis of relationships between age and mutations". Thus, due to the fact that overdispersion affects both our real and shuffled data, it is likely that our procedure is rather too pessimistic than too optimistic in discovering allelic bias. More specifically, for each bin, we generate an empirical p-value distribution by randomly but equally assigning each overlapping read to one of the two read groups, perform a binomial test and select the most significant p-value for each region. For a given p-value threshold the FDR is then calculated as the fraction of significant regions identified from the random by the total number of significant regions. Finally, we note that the FDR calculation is based on the full set of user regions.
+
+As an output, the raw p-values from the binomial tests, estimates for the allelic fraction and corresponding confidence intervals are reported for each bin across all user regions. In addition, the corresponding FDR values for a user-defined set of p-values is also given that may then be used to select only regions that fulfill a user-defined condition based on FDR preferences.
+
 
 
 
@@ -615,8 +646,15 @@ Please report any bug that you encounter as well as any feature request that you
 
 [9] Huber, W., Carey, V. J., Gentleman, R., Anders, S., Carlson, M., Carvalho, B. S., ... & Morgan, M. (2015). Orchestrating high-throughput genomic analysis with Bioconductor. Nature methods, 12(2), 115-121.
 
-[10] Alexandrov, L. B., Nik-Zainal, S., Wedge, D. C., Aparicio, S. A., Behjati, S., Biankin, A. V., ... & Boyault, S. (2013). Signatures of mutational processes in human cancer. Nature, 500(7463), 415-421.
+[10] Koehler, R., Issac, H., Cloonan, N., & Grimmond, S. M. (2011). The uniqueome: a mappability resource for short-tag sequencing. Bioinformatics, 27(2), 272-274.
 
-[11] Robinson, M. D., McCarthy, D. J., & Smyth, G. K. (2010). edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. Bioinformatics, 26(1), 139-140.
+[11] Andrews, S. (2010). FastQC: A quality control tool for high throughput sequence data. Reference Source.
 
-[12] Mayba, O., Gilbert, H. N., Liu, J., Haverty, P. M., Jhunjhunwala, S., Jiang, Z., ... & Zhang, Z. (2014). MBASED: allele-specific expression detection in cancer tissues and cell lines. Genome Biol, 15(8), 405.
+[12] Diaz, A., Nellore, A., & Song, J. S. (2012). CHANCE: comprehensive software for quality control and validation of ChIP-seq data. Genome Biol, 13(10), R98.
+
+[13] van de Geijn, B., McVicker, G., Gilad, Y., & Pritchard, J. (2014). WASP: allele-specific software for robust discovery of molecular quantitative trait loci. bioRxiv, 011221.
+
+[14] Shabalin, A. A. (2012). Matrix eQTL: ultra fast eQTL analysis via large matrix operations. Bioinformatics, 28(10), 1353-1358.
+
+[15] Alexandrov, L. B., Nik-Zainal, S., Wedge, D. C., Aparicio, S. A., Behjati, S., Biankin, A. V., ... & Boyault, S. (2013). Signatures of mutational processes in human cancer. Nature, 500(7463), 415-421.
+
