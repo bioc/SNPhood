@@ -1,47 +1,24 @@
-#' @import checkmate
+#' @import checkmate 
+# @import data.table
 #' @importFrom data.table data.table :=
 #' @importFrom stats binom.test
-.calcBinomTestVector <- function(successes, failures, returnType="p.value", indexResult=1, conf.level=0.95) {
+.calcBinomTestVector <- function(successes, failures, probSuccess = 0.5, returnType="p.value", indexResult=1, conf.level=0.95) {
     
     # Check types and validity of arguments       
     assertIntegerish(successes, lower = 0)  
     assertIntegerish(failures, lower = 0) 
     assertChoice(returnType, c("p.value","conf.int", "statistic", "parameter", "estimate", "null.value", "alternative", "method", "data.name"))
     assertInt(indexResult, lower = 1) 
-    assertPercentage(conf.level)
+    assertNumber(conf.level, lower = 0, upper = 1)
+    assertNumber(probSuccess, lower = 0, upper = 1)
     
     dt  =  data.table(successes, failures)
-    dt[, pp:=binom.test(c(successes, failures), n = NULL, conf.level = conf.level)[returnType][[1]][indexResult], by = list(successes, failures)]$pp
-}
-
-.appendList <- function(x, val) 
-{
-    stopifnot(is.list(x), is.list(val))
-    xnames <- names(x)
-    
-    hasNames = TRUE
-    if (is.null( xnames)) {
-        hasNames = FALSE
-    }
-    
-    for (v in seq_len(length(val))) {
-        
-        if (hasNames) {
-            x[[v]] <- if (v %in% xnames && is.list(x[[v]]) && is.list(val[[v]])) 
-                .appendList(x[[v]], val[[v]])
-            else c(x[[v]], val[[v]])
-        } else {
-            x[[v]] <- if (is.list(x[[v]]) && is.list(val[[v]])) 
-                .appendList(x[[v]], val[[v]])
-            else c(x[[v]], val[[v]])
-        }
-       
-    }
-    x
+    dt[, pp := binom.test(c(successes, failures), n = NULL, p = probSuccess, conf.level = conf.level)[returnType][[1]][indexResult], by = list(successes, failures)]$pp
 }
 
 
 #' @import checkmate
+#' @importFrom Rsamtools indexBam
 .checkAndCreateIndexFile <- function(BAMfile) {
     
     # Check types and validity of arguments     
@@ -50,11 +27,15 @@
     indexFile = paste0(BAMfile,".bai")
     
     if (!testFile(indexFile, access = "r")) {  
-        stop("Could not find index file ", indexFile,"for BAM file", BAMfile,". Try to create it with samtools index, for example", sep = "")
+        warning("Could not find index file ", indexFile," for BAM file ", BAMfile,". Attemtping to produce it automatically...", sep = "")
+        indexBam(BAMfile)
     }
+        
 }
 
-#' @import checkmate Rsamtools
+#' @import checkmate
+#' @import Rsamtools
+#' @importFrom Rsamtools scanBamFlag
 .constructScanBamFlagsGen <- function(isPaired = NA, 
                                        isProperPair = NA,
                                        isUnmappedQuery = NA,
@@ -191,25 +172,34 @@
 }
 
 
-#' @import checkmate Rsamtools
-.extractFromBAMGen <- function(regions.gr, file, fieldsToRetrieve = scanBamWhat(), flags, readGroupSpecificity = TRUE, simpleCigar = FALSE, reverseComplement = FALSE, verbose = TRUE) {
+#' @import checkmate 
+#' @import Rsamtools
+# @importFrom Rsamtools ScanBamParam scanBam
+.extractFromBAMGen <- function(regions.gr, file, fieldsToRetrieve = scanBamWhat(), flags, readGroupSpecificity = TRUE, simpleCigar = FALSE, reverseComplement = FALSE, minMapQ = 0, verbose = TRUE) {
     
     assertClass(regions.gr, "GRanges") 
     assertFile(file, access = "r")
     assertSubset(fieldsToRetrieve, scanBamWhat(), empty.ok = FALSE)  
     assertInteger(flags, min.len = 1, any.missing = FALSE)
+    assertInt(minMapQ, lower = 0)
     assertFlag(readGroupSpecificity)
     assertFlag(simpleCigar)
     assertFlag(reverseComplement)
     assertFlag(verbose)   
     
+    if (minMapQ == 0) {
+        minMapQ = NA_integer_
+    }
+    
+    # Because data types are coerced to IRangesList, which does not include strand information (use the flag argument instead). 
+    
     if (readGroupSpecificity) {
         
-        param  =  ScanBamParam(which = regions.gr, what = fieldsToRetrieve, flag = flags, reverseComplement = reverseComplement, simpleCigar = simpleCigar, tag = "RG" )
+        param  =  ScanBamParam(which = regions.gr, what = fieldsToRetrieve, flag = flags, reverseComplement = reverseComplement, simpleCigar = simpleCigar, mapqFilter = minMapQ, tag = "RG" )
         
     } else {
         
-        param  =  ScanBamParam(which = regions.gr, what = fieldsToRetrieve, flag = flags, reverseComplement = reverseComplement, simpleCigar = simpleCigar)
+        param  =  ScanBamParam(which = regions.gr, what = fieldsToRetrieve, flag = flags, reverseComplement = reverseComplement, simpleCigar = simpleCigar, mapqFilter = minMapQ)
         
     }
     
@@ -220,11 +210,12 @@
 
 
 #' @import checkmate
-.filterReads <- function(bamObj, strand.vec, alleleCur) {
+.filterReads <- function(bamObj, strand.vec, alleleCur, strandPar) {
         
     assertList(bamObj, any.missing = FALSE, min.len = 1)
     assertSubset(strand.vec, c("+","-","*"))
     assertCharacter(alleleCur, min.chars = 1, len = 1)  
+    assertSubset(strandPar, c("both", "sense", "antisense"))
     
     nReadsDeleted = 0
     
@@ -234,10 +225,16 @@
         indexToDelete = c()
         
         # Filter strand
-        if (!is.na(strand.vec[i]) & strand.vec[i] != "*") {
+        if (!is.na(strand.vec[i]) & strand.vec[i] != "*" & strandPar != "both") {
             # Filter only those with the desired and specific strand. This cannot be done before because in ScanBamParam, data types are coerced to IRangesList, which does not include strand information. 
             # The flags are also not suitable because the strand information flag is set globally and cannot be individual for each entry.
-            indexToDelete = which(strand.vec[i] != bamObj[[i]]$strand)
+            
+            if (strandPar == "sense") {
+                indexToDelete = which(strand.vec[i] != bamObj[[i]]$strand)
+            } else {
+                indexToDelete = which(strand.vec[i] == bamObj[[i]]$strand)
+            }
+            
         }
         
         # Filter read group      
@@ -289,8 +286,7 @@
 }
 
 #' @import checkmate
-# TODO. Delete? not needed
-generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
+.generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
     assertFlag(pairedEndReads)
     
@@ -313,7 +309,6 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
         
         par.l$readFlag_isPaired = NA 
         par.l$readFlag_isProperPair = NA 
-        par.l$readFlag_isUnmappedQuery = NA 
         par.l$readFlag_hasUnmappedMate = NA 
         par.l$readFlag_isMateMinusStrand = NA 
         par.l$readFlag_isFirstMateRead = NA 
@@ -322,11 +317,12 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
         
         
     }
-    
-    .constructScanBamFlags(par.l)
+
+    par.l
 }
 
-#' @import checkmate GenomeInfoDb
+#' @import checkmate
+#' @importFrom GenomeInfoDb fetchExtendedChromInfoFromUCSC 
 .getGenomeData <- function(genome, includeChrM = FALSE) {
     
     
@@ -590,7 +586,11 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
 }
 
-#' @import checkmate S4Vectors IRanges GenomeInfoDb GenomicRanges
+#' @import checkmate
+#' @importFrom GenomeInfoDb sortSeqlevels
+#' @import GenomicRanges
+# @importFrom GenomicRanges GRanges
+#' @importFrom IRanges IRanges
 .parseAndProcessUserRegions <- function(par.l, chrSizes.df, verbose = TRUE)  {
     
     assertList(par.l, min.len = 1, all.missing = FALSE)  
@@ -613,6 +613,16 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
         warning("The parameter \"linesToParse\" has been set to a non-default value. Only a subset of all lines have been parsed\n")
     }
     
+    
+    # Check if the user wants to use unassembled chromosomes. If yes, remove them.
+    regionsUnassembled = which(!userRegions.df$chr %in% as.character(chrSizes.df$chr))
+    if (length(regionsUnassembled) > 0) {
+        warning(length(regionsUnassembled), " user regions originate from unassembled or unknown chromosomes. They have been deleted.\n")
+        
+        userRegions.df = userRegions.df[-regionsUnassembled,]
+    }
+    
+    
     # Normalize everything to fully closed one-based coordinates. GRange coordinates are fully closed, and 1 based! See http://master.bioconductor.org/help/course-materials/2014/SeattleFeb2014/Ranges.pdf.
     
     # Adjust positions by one if zero-based coordinates
@@ -632,8 +642,7 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
         if (verbose) message("  Decrease start coordinates by one because coordinates have to be closed at both start and end according to the BAM standard)")
         userRegions.df$start   = userRegions.df$start  + 1
     }
-    
-    
+
     # Check if some of the positions are larger than the chromosome sizes
     index.vec = which(userRegions.df$start > chrSizes.df[userRegions.df$chr,]$size)
     if (length(index.vec) > 0) {    
@@ -721,7 +730,7 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
 }
 
-#' @import checkmate SummarizedExperiment
+#' @import checkmate 
 #' @importFrom DESeq2 DESeqDataSetFromMatrix estimateSizeFactors counts sizeFactors
 .scaleLibraries <- function(rawCounts.m, verbose = TRUE) {
     
@@ -731,7 +740,10 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     
     # Use DeSeq to compute the size factors and scale the libraries
     # Make sure we have column names
-    colnames(rawCounts.m) = paste0("sample",1:ncol(rawCounts.m))
+    if (testNull(colnames(rawCounts.m))) {
+        colnames(rawCounts.m) = paste0("sample",1:ncol(rawCounts.m))
+    }
+    
 
     colData = data.frame(condition = colnames(rawCounts.m)) # column names don't matter because of the specific design matrix (only intercept fitting)
     dds = DESeqDataSetFromMatrix(countData = rawCounts.m, colData = colData, design = ~1)
@@ -759,7 +771,6 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
     res.l$adjCounts = counts(dds, normalized = TRUE)
     res.l$sizeFactors =  sizeFactors(dds)
     
-    #TODO: Check here if the names are correct - seems to be the wrong name. 
     names(res.l$sizeFactors) = colnames(rawCounts.m)
     
     res.l
@@ -984,17 +995,6 @@ generateDefaultReadFlags <- function(pairedEndReads = TRUE) {
 # 
 # }
 
-detachAllPackages <- function() {
-    
-    basic.packages <- c("package:stats","package:graphics","package:grDevices","package:utils","package:datasets","package:methods","package:base")
-    
-    package.list <- search()[ifelse(unlist(gregexpr("package:",search())) == 1,TRUE,FALSE)]
-    
-    package.list <- setdiff(package.list,basic.packages)
-    
-    if (length(package.list) > 0)  for (package in package.list) detach(package, character.only = TRUE)
-    
-}
 
 
 #' @import checkmate
@@ -1007,6 +1007,7 @@ detachAllPackages <- function() {
     valueToAdd = 0.01
     
     SdS = apply(target.m, 1, sd)
+    # SdS = rowSds(target.m)
     zeroSds = length(which(SdS == 0))
     
     if (zeroSds > 0) {
@@ -1076,6 +1077,7 @@ detachAllPackages <- function() {
 
 #' @importFrom lattice levelplot panel.levelplot panel.abline
 #' @importFrom grDevices gray
+#' @import checkmate 
 .generateClusterPlot <- function(clusterplot.df, SNPhood.o, clustersToPlot = NULL) {
     
     .checkObjectValidity(SNPhood.o)
@@ -1114,25 +1116,37 @@ detachAllPackages <- function() {
 
 
 #' @importFrom BiocParallel multicoreWorkers MulticoreParam
-initBiocParallel <- function(nWorkers) {
+#' @import checkmate 
+.initBiocParallel <- function(nWorkers) {
+    
+    assertInt(nWorkers, lower = 1)    
     
     if (nWorkers > multicoreWorkers()) {
-        warning("Requested ", nWorkers, " CPUs, but only ", multicoreWorkers(), "are available and can be used.")
+        warning("Requested ", nWorkers, " CPUs, but only ", multicoreWorkers(), " are available and can be used.")
         nWorkers = multicoreWorkers()
     }
     
     MulticoreParam(workers = nWorkers, progressBar = TRUE, stop.on.error = TRUE)
+
 }
 
-execInParallelGen <- function(nCores, iteration, functionName, ...) {
+#' @importFrom BiocParallel bplapply bpok
+#' @import checkmate 
+.execInParallelGen <- function(nCores, returnAsList, iteration, verbose, functionName, ...) {
+    
+    start.time  <-  Sys.time()
+    
+    assertInt(nCores, lower = 1)
+    assertFlag(returnAsList)
+    assertFunction(functionName)
+    assertVector(iteration, any.missing = FALSE, min.len = 1)
     
     res.l = list()
-    # Call the function in parallel
 
     if (nCores > 1) {
         
         res.l = tryCatch( {
-            bplapply(iteration, functionName, ..., BPPARAM = initBiocParallel(nCores))
+            bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores))
 
         }, error = function(e) {
             warning("An error occured while executing the function with multiple CPUs. Trying again using only only one CPU...")
@@ -1140,10 +1154,89 @@ execInParallelGen <- function(nCores, iteration, functionName, ...) {
         }
         )
         
+        failedTasks = which(!bpok(res.l))
+        if (length(failedTasks) > 0) {
+            warning("At least one task failed while executing in parallel, attempting to rerun those that failed: ",res.l[[failedTasks[1]]])
+            
+            res.l = tryCatch( {
+                bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores), BPREDO = res.l)
+                
+            }, error = function(e) {
+                warning("Once again, an error occured while executing the function with multiple CPUs. Trying again using only only one CPU...")
+                lapply(iteration, functionName, ...)
+            }
+            )
+        }
+        
     } else {
         res.l = lapply(iteration, functionName, ...)
+    }
+
+    if (nCores > multicoreWorkers()) {
+        nCores = multicoreWorkers()
+    }
+    
+    if (verbose) message(" Finished execution using ",nCores," cores.")
+    .printExecutionTime(start.time, verbose = TRUE)
+    
+    if (!returnAsList) {
+        return(unlist(res.l))
     }
     
     res.l
     
 }
+    
+
+
+#' @importFrom Rsamtools countBam scanBam ScanBamParam
+#' @import checkmate 
+.calculateGenomeWideBackground <- function(fileCur, par.l, nReadsToCheck = 1000, verbose = TRUE) {
+    
+    if (verbose) message(" Calculate background average")
+    
+    # Read BAM file and automatically determine the read size or at least a good proxy for it
+    
+    param  =  ScanBamParam(flag = .constructScanBamFlags(par.l), 
+                           reverseComplement = par.l$readFlag_reverseComplement, 
+                           simpleCigar = par.l$readFlag_simpleCigar, 
+                           mapqFilter = par.l$readFlag_minMapQ,
+                           what = "seq")
+    
+    res = scanBam(BamFile(fileCur, yieldSize = nReadsToCheck), param = param)
+    readLengthBAM = max(width(res[[1]]$seq))
+    effectiveGenomeSizeProp = .getUniqueMappabilityData(par.l$assemblyVersion, readLengthBAM, verbose = verbose) 
+    genomeSizeTotal = sum(.getGenomeData(par.l$assemblyVersion)$size)
+    
+    # Obtain total number of reads in BAM file.
+    # Subject the reads to the same constraint as for the signal files
+    nReadsTotal = countBam(fileCur, param = param)$records
+    
+    avgBackground = (nReadsTotal  / (genomeSizeTotal * effectiveGenomeSizeProp)) * (par.l$binSize + readLengthBAM - 1)
+    
+    if (verbose) message("  Average background: ",  avgBackground)
+    
+    avgBackground
+    
+}
+
+
+.printExecutionTime <- function(startTime, verbose = TRUE) {
+    
+    endTime  <-  Sys.time()
+    if (verbose) message(" Execution time: ", round(endTime - startTime, 1), " ", units(endTime - startTime))
+}
+    
+    
+    # Important: Append the size factors because both signal and input may be used multiple times with other signals and input files, respectively, each of which translates to a different size factor
+    # Change the name so that it can be traced back to the corresponding signal data file
+    
+    # Switch so that the mapping is composed of a signal and the corresponding input datafile always
+    
+    # Save the size factor. Reverse the names here to make the mapping properly. This is correct and verified!
+    # TODO check if needed
+    #names(sizeFactors.vec) = rev(names(sizeFactors.vec))     
+    #SNPhood.o@internal$sizeFactors[[alleleCur]] [[individualCur]]   = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[individualCur]]  , sizeFactors.vec[inputFileSetCur])
+    #SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]] = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]], sizeFactors.vec[individualCur])
+    
+    

@@ -13,4 +13,7 @@
     
     # Turn off scientific notation
     options(scipen = 999) 
+    
+    # Print warnings as they occur. Don't use but instead print all unique warnings at the end of the run
+    #options(warn=1)
 }

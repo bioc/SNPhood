@@ -8,6 +8,7 @@
 #' If the \code{corrplot} package is available, it will be used to produce a nice visualization of the correlation matrix.
 #'
 #' @template SNPhood
+#' @template verbose_FALSE
 #' @template fileToPlot
 #' @param corMeasure Character(1). Default "pearson". The correlation measure that should be used to compare between pairs of samples. 
 #' Either \code{pearson}, \code{spearman}, or \code{kendall}. 
@@ -25,12 +26,17 @@
 #' # Using Spearman correlation instead of Pearson
 #' SNPhood.o = plotAndCalculateCorrelationDatasets(SNPhood.o, corMeasure = "spearman")
 #' @export
-#' @import checkmate S4Vectors
+#' @import checkmate
+#' @importFrom stats cor
 #' @importFrom grDevices pdf dev.off
-plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, corMeasure = "pearson", ...) {
+plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, corMeasure = "pearson", verbose = FALSE, ...) {
     
     # Check types and validity of arguments    
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+    
     assert(checkNull(fileToPlot), 
            checkCharacter(fileToPlot, min.chars = 1, any.missing = FALSE, len = 1))
     assertChoice(corMeasure, choices = c("pearson", "spearman", "kendall"))
@@ -133,6 +139,7 @@ plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, co
     SNPhood.o@internal$addResultsElementsAdded = c(SNPhood.o@internal$addResultsElementsAdded, "samplesCorrelation")
     
     
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     SNPhood.o
     
 }
@@ -161,6 +168,8 @@ plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, co
 #' @template signThreshold
 #' @template readGroupColors
 #' @template fileToPlot
+#' @template verbose_FALSE
+#' 
 #' @template ggplotReturn
 #' @examples
 #' data(SNPhood.o, package="SNPhood")
@@ -179,11 +188,14 @@ plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, co
 #' @import grid
 #' @importFrom gridExtra grid.arrange
 #' @importFrom grDevices pdf dev.off
-#' @importFrom ggplot2 ggplotGrob ggplot aes geom_point geom_line xlab ylab coord_cartesian ggtitle geom_hline theme element_text element_blank scale_colour_manual scale_fill_discrete scale_shape_manual labs 
-plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThreshold = 0.05, readGroupColors = NULL, fileToPlot = NULL) {
+#' @importFrom ggplot2 ggplotGrob ggplot aes_ geom_point geom_line xlab ylab coord_cartesian ggtitle geom_hline theme element_text element_blank scale_colour_manual scale_fill_discrete scale_shape_manual labs 
+plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThreshold = 0.05, readGroupColors = NULL, fileToPlot = NULL, verbose = FALSE) {
     
     # Check types and validity of arguments    
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -200,7 +212,8 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     region = .checkAndConvertRegionArgument(SNPhood.o, region, nullAllowed = FALSE, maxLength = 1) 
     dataset = .checkAndConvertDatasetArgument(SNPhood.o, dataset, nullAllowed = FALSE, maxLength = 1)
     
-    assertPercentage(signThreshold)
+    assertNumber(signThreshold, lower = 0, upper = 1)
+    
     
     assert(checkNull(readGroupColors),
            checkCharacter(readGroupColors, min.chars = 1, len = nReadGroups(SNPhood.o))
@@ -223,24 +236,31 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     data.df$confUpper = SNPhood.o@additionalResults$allelicBias$confIntervalMax[[dataset]][region,]
     
     data.df$pvalue    = SNPhood.o@additionalResults$allelicBias$pValue[[dataset]][region,]
-    data.df$sign      = data.df$pvalue <= signThreshold
+    data.df$sign      = as.factor(data.df$pvalue <= signThreshold)
     
-    data2.df = data.df[which(data.df$sign),]
+    data2.df = data.df[which(as.logical(data.df$sign)),]
     
     data2.df = data.df
     
-    mainLabel = paste0("Allelic bias results for the region around the SNP\n", .produceTitleForPlot(SNPhood.o, region))
+    mainLabel = paste0("Allelic bias results for the region around the position\n", .produceTitleForPlot(SNPhood.o, region))
     
     legendLabelConfInterval = paste0("Lower and upper\n",round(SNPhood.o@additionalResults$allelicBias$parameters$confLevel * 100, 0),"% CI")
     
     sizePoints = 3
     
-    p1 <- ggplot(data.df, aes(x = bin, y = value, shape = as.factor(sign)))  + geom_point(colour = "black", size = sizePoints) 
+    p1 <- ggplot(data.df, aes_(~bin, ~value, shape = ~sign))  + geom_point(colour = "black", size = sizePoints) 
     p1 <- p1 + .getVerticalLineForGGPlot(SNPhood.o@internal$plot_origBinSNPPosition)
     p1 <- p1 + scale_shape_manual(name = "Allelic fraction\nsignificant", values = c(1,19))
-    p1 <- p1 + geom_line(aes(x = bin, y = confLower, colour = "lowerConf", shape = NULL))
-    p1 <- p1 + geom_line(aes(x = bin, y = confUpper, colour = "lowerConf", shape = NULL))
-    p1 <- p1 + ylab("Allelic fraction\n")
+    
+    if (nBins(SNPhood.o) > 1) {
+        p1 <- p1 + geom_line(aes_(~bin, ~confLower, colour = "lowerConf", shape = NULL))
+        p1 <- p1 + geom_line(aes_(~bin, ~confUpper, colour = "lowerConf", shape = NULL))
+    } else {
+        p1 <- p1 + geom_point(aes_(~bin, ~confLower, colour = "lowerConf", shape = NULL))
+        p1 <- p1 + geom_point(aes_(~bin, ~confUpper, colour = "lowerConf", shape = NULL))
+    }
+    
+    p1 <- p1 + .getYLab("Allelic fraction\n")
     p1 <- p1 + coord_cartesian(ylim = c(-0.1, 1.1))
     p1 <- p1 + ggtitle(mainLabel)
     p1 <- p1 + .getBinAxisLabelsForGGPlot(SNPhood.o@internal$plot_labelBins)
@@ -252,9 +272,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
                                    breaks = c("lowerConf"),
                                    labels = c(legendLabelConfInterval),
                                    values = c("gray"))
-    
-    
-    
+
     #########################################
     # Second plot with p value distribution #
     #########################################
@@ -262,20 +280,20 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     data.df = data.frame(bin = 1:nBins(SNPhood.o))
     data.df$value       = SNPhood.o@additionalResults$allelicBias$pValue[[dataset]][region,]
     data.df$valueTransf = -log(data.df$value ,10)
-    data.df$sign        = data.df$value <= signThreshold
+    data.df$sign        = as.factor(data.df$value <= signThreshold)
     
     pValueSigThresholdTransformed = -log(signThreshold, 10)
     
     ylim = c(-0.1, max(max(data.df$valueTransf), pValueSigThresholdTransformed))
     ylim[2] = ylim[2] + 0.1 * ylim[2]
     
-    p2 <- ggplot(data.df, aes(x=bin, y=valueTransf, shape=as.factor(sign)))  + .getVerticalLineForGGPlot(SNPhood.o@internal$plot_origBinSNPPosition) + ylab("-log10 p-value\n") + geom_point(colour = "red", size = 3)
+    p2 <- ggplot(data.df, aes_(~bin, ~valueTransf, shape = ~sign))  + .getVerticalLineForGGPlot(SNPhood.o@internal$plot_origBinSNPPosition) + .getYLab("-log10 p-value\n") + geom_point(colour = "red", size = 3)
     p2 <- p2 + scale_shape_manual(values = c(1,19))
     p2 <- p2 + coord_cartesian(ylim = ylim)
     p2 <- p2 + .getBinAxisLabelsForGGPlot(SNPhood.o@internal$plot_labelBins)
     
     p2 <- p2 + .getThemeForGGPlot()
-    p2 <- p2 + theme(axis.title.x=element_blank())
+    p2 <- p2 + theme(axis.title.x = element_blank())
     p2 <- p2 + geom_hline(yintercept = pValueSigThresholdTransformed, linetype = "dotted")
     p2 <- p2 + labs(shape = "p-value\nsignificant") + scale_fill_discrete(labels = c("no","yes"))
     
@@ -283,7 +301,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     # Third plot with a region summary for the particular individual #
     #################################### #############################
     
-    p3 = plotBinCounts(SNPhood.o, region = region, readGroups = NULL, datasets = dataset, readGroupColors = readGroupColors, 
+    p3 = plotBinCounts(SNPhood.o, regions = region, readGroups = NULL, datasets = dataset, readGroupColors = readGroupColors, 
                        ylim = NULL, addGenotype = TRUE, addTitle = FALSE, plotGraph = FALSE)
     
     # Now force the width of all graphs to be identical so they align nicely and plot it using a grid
@@ -301,7 +319,9 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     
     if (!testNull(fileToPlot)) dev.off()  
     
-    list(plot1=p1, plot2=p2, plot3=p3)
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
+    
+    list(plot1 = p1, plot2 = p2, plot3 = p3)
     
 }
 
@@ -312,7 +332,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
 #' 
 #'
 #' @template SNPhood
-#' @template region
+#' @template regions
 #' @template readGroups
 #' @template datasets
 #' @template readGroupColors
@@ -320,7 +340,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
 #' @param addGenotype Logical(1). Default TRUE. Should the genotype distribution for each read group at the original user position be displayed in the legend in addition?
 #' See the Vignette for more details how this distribution is determined.
 #' @param plotGenotypeRatio  Logical(1). Default FALSE. Should the ratio of the genotypes be plotted instead of the count or enrichment values?
-#' Only applicable if the number of read groups to be plotted is 2. Setting this parameter to TRUE may result in ratios across bins that are interrupted due to
+#' Only applicable if the number of read groups to be plotted is 2 and if one region is plotted. Setting this parameter to TRUE may result in ratios across bins that are interrupted due to
 #' zero counts (and a resulting division by zero, which can therefore not be displayed). Also, ratios cannot be plotted if the genotype for the selected
 #' regions could not be determined due to the lack of reads overlapping with the particular region (see the Vignette for details).
 #' @param addTitle Logical(1). Default TRUE. Should the plot contain a title that summarizes the genomic region that is visualized?
@@ -328,6 +348,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
 #' @template plotGraph
 #' @template fileToPlot
 #' @template maxWidthLabels
+#' @template verbose_FALSE
 #' 
 #' @template ggplotReturn
 #' @examples
@@ -337,16 +358,23 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
 #' plot = plotBinCounts(SNPhood.o)
 #' 
 #' # Plot the second region for the first dataset, using specific colors for the read groups.
-#' plot = plotBinCounts(SNPhood.o, region = 2, dataset = 1, readGroupColors = c("red","blue","gray"))
+#' plot = plotBinCounts(SNPhood.o, regions = 2, dataset = 1, readGroupColors = c("red","blue","gray"))
 #' 
 #' # Plot the first region for the first dataset and the genotype ratio. Save the plot in a variable
-#' plot = plotBinCounts(SNPhood.o, region = 1, readGroups = c("maternal", "paternal"), dataset = 1, plotGenotypeRatio = TRUE)
+#' plot = plotBinCounts(SNPhood.o, regions = 1, readGroups = c("maternal", "paternal"), dataset = 1, plotGenotypeRatio = TRUE)
+#' 
+#' #' # Plot all regions for the first dataset and aggregate. Save the plot in a variable
+#' plot = plotBinCounts(SNPhood.o, regions = NULL, readGroups = c("maternal", "paternal"), dataset = 1)
+#' 
 #' @export
-#' @importFrom ggplot2 ggplot aes ggtitle xlab ylab geom_line coord_cartesian labs scale_colour_manual
-plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = NULL, readGroupColors = NULL, ylim = NULL,
-                          addGenotype = TRUE, plotGenotypeRatio = FALSE, addTitle = TRUE, colorPalette = "Set1", plotGraph = TRUE,  fileToPlot = NULL, maxWidthLabels = 25) {
+#' @importFrom ggplot2 ggplot aes_ ggtitle xlab ylab geom_line coord_cartesian labs scale_colour_manual
+plotBinCounts <- function(SNPhood.o, regions = 1, readGroups = NULL, datasets = NULL, readGroupColors = NULL, ylim = NULL,
+                          addGenotype = TRUE, plotGenotypeRatio = FALSE, addTitle = TRUE, colorPalette = "Set1", plotGraph = TRUE,  fileToPlot = NULL, maxWidthLabels = NULL, verbose = FALSE) {
     
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -359,8 +387,15 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
     if (testNull(datasets)) {
         datasets = annotationDatasets(SNPhood.o)
     }
+
     
-    region = .checkAndConvertRegionArgument(SNPhood.o, region, nullAllowed = FALSE, maxLength = 1)
+    if (testNull(regions)) {
+        regions = annotationRegions(SNPhood.o)
+    }    
+    
+    nRegions = length(regions)
+    
+    regions = .checkAndConvertRegionArgument(SNPhood.o, regions, nullAllowed = TRUE, maxLength = NULL)
     
     assertSubset(readGroups, annotationReadGroups(SNPhood.o))
     
@@ -377,7 +412,11 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
     }
     
     
-    assertIntegerish(maxWidthLabels, lower = 1, any.missing = FALSE, len = 1)
+    assert(checkNull(maxWidthLabels), checkIntegerish(maxWidthLabels, lower = 1, any.missing = FALSE, len = 1))
+    
+    if (testNull(maxWidthLabels)) {
+        maxWidthLabels = 9999
+    }
     
     assert(checkNull(ylim),
            checkIntegerish(ylim, any.missing = FALSE, len = 2)
@@ -404,9 +443,18 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
         plotGenotypeRatio = FALSE
     }
     
+    if (plotGenotypeRatio & length(regions) > 1) {
+        warning("Cannot plot genotype ratio as the number of regions to plot is ",length(regions)," and not 1.")
+        plotGenotypeRatio = FALSE
+    }
+
+    if (addGenotype & length(regions) > 1) {
+        warning("Cannot add genotype as the number of regions to plot is ",length(regions)," and not 1.")
+        addGenotype = FALSE
+    }    
     
     # Produce the data
-    plot.df = data.frame(label = c(), dataset = c(), readGroup = c(), bin = c(), value = c())
+    plot.df = data.frame(label = c(), labelTrimmed = c(), dataset = c(), readGroup = c(), bin = c(), value = c(), stringsAsFactors = FALSE)
     
     # Collect the most common genotype for each individual and read group
     mostCommonGenotype.df = data.frame(dataset = c(), readGroup = c(), base = c(), freq = c(), stringsAsFactors = FALSE)
@@ -423,16 +471,12 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
             label = paste0(readGroupCur)
             if (nReadGroups(SNPhood.o) == 1) label = "all" 
             
-            if (length(datasets) > 1) {
-                datasetName = strtrim(paste0(annotationDatasets(SNPhood.o)[datasetCur],": ",label), maxWidthLabels)
-            } else {
-                datasetName = strtrim(paste0(label), maxWidthLabels)
-            }
-            
+            datasetName = ifelse(length(datasets) == 1, label, paste0(annotationDatasets(SNPhood.o)[datasetCur], ": ", label))
+
             
             # Add genotype
             if (addGenotype) {
-                genotype = SNPhood.o@annotation$genotype$readsDerived[[readGroupCur]][[datasetCur]][,region]
+                genotype = SNPhood.o@annotation$genotype$readsDerived[[readGroupCur]][[datasetCur]][, regions]
                 genotype = sort(genotype,decreasing = TRUE)
                 nonZeroReads = length(which(genotype > 0))
                 
@@ -460,7 +504,19 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
             
             # Add to df rowwise
             for (k in 1:nBins(SNPhood.o)) {
-                plot.df = rbind(plot.df, data.frame(label = datasetName, dataset = datasetCur, readGroup = readGroupCur, bin = k, value = SNPhood.o@readCountsBinned[[readGroupCur]][[datasetCur]][region,k]))
+                
+                if (SNPhood.o@internal$countType == "enrichment") {
+                    val = sum(SNPhood.o@enrichmentBinned[[readGroupCur]][[datasetCur]][regions,k])
+                    
+                } else {
+                    val = sum(SNPhood.o@readCountsBinned[[readGroupCur]][[datasetCur]][regions,k])
+                }
+                
+                plot.df  = rbind(plot.df, data.frame(label = datasetName, 
+                                                    dataset = datasetCur, 
+                                                    readGroup = readGroupCur, 
+                                                    bin = k, 
+                                                    value = val))
             }
             
         }
@@ -554,7 +610,7 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
         }
         
         if (length(excludeDatasets) > 0) {
-            warning("Excluding dataset ", paste0(excludeDatasets, collapse=","), " from plot because of genotypes that differ from two selected genotypes for which the ratio is produced.")
+            warning("Excluding dataset ", paste0(excludeDatasets, collapse = ","), " from plot because of genotypes that differ from two selected genotypes for which the ratio is produced.")
             summary.df = summary.df[-which(summary.df$dataset %in% excludeDatasets),]
         } 
         
@@ -602,6 +658,11 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
         
     } # end if (plotGenotypeRatio)
     
+    # Calculate the average enrichment instead of the sum
+    if (SNPhood.o@internal$countType == "enrichment") {
+        plot.df$value = plot.df$value / nRegions
+    }
+    
     
     customYLimits = FALSE
     if (!testNull(ylim)) {
@@ -616,10 +677,17 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
     }
     
     if (addTitle) {
-        mainLabel = paste0(.getBinLabelYAxis(SNPhood.o), " for the region around the SNP\n", .produceTitleForPlot(SNPhood.o, region))
+        
+        if (length(regions) == 1) {
+            mainLabel = paste0(.getBinLabelYAxis(SNPhood.o), " for the region around the position\n", .produceTitleForPlot(SNPhood.o, regions))
+            
+        } else {
+            mainLabel = paste0("Aggregated ", .getBinLabelYAxis(SNPhood.o, startLowercase = TRUE), "\nfor ", .prettyNum(length(regions)), " regions\n")
+            
+        }
     }
     if (plotGenotypeRatio) {
-        mainLabel = paste0("Genotype ratio of ",.getBinLabelYAxis(SNPhood.o)," for the region around the SNP\n", .produceTitleForPlot(SNPhood.o, region))
+        mainLabel = paste0("Genotype ratio of ",.getBinLabelYAxis(SNPhood.o)," for the region around the position\n", .produceTitleForPlot(SNPhood.o, regions))
     }
     
     legendTitle = "Dataset: read group"
@@ -651,21 +719,43 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
         ylabLabel = paste0("Ratio of ",.getBinLabelYAxis(SNPhood.o)," with genotype ", refBase," over ", altBase, "\n(read groups ", paste0(readGroups, collapse = ","),")\n")
     }
     
-    p <- ggplot(plot.df, aes(x = bin, y = value, colour = label)) + xlab(.getBinLabelXAxis(SNPhood.o)) + ylab(ylabLabel) + geom_line()
+    sizePoints = 3
+    
+    p <- ggplot(plot.df, aes_(~bin, ~value, colour = ~label)) + xlab(.getBinLabelXAxis(SNPhood.o)) + .getYLab(ylabLabel) 
+    if (nBins(SNPhood.o) == 1) {
+        p <- p + geom_point(size = sizePoints)
+    } else {
+        p <- p +  geom_line()
+    }  
+    
+    # TODO: Enrichment scale ius not yet adjusted, 
+        
     p <- p + coord_cartesian(ylim = ylim)
     if (addTitle) p <- p + ggtitle(mainLabel)
     p <- p + .getBinAxisLabelsForGGPlot(SNPhood.o@internal$plot_labelBins)
     p <- p + .getVerticalLineForGGPlot(SNPhood.o@internal$plot_origBinSNPPosition)
-    if (plotGenotypeRatio) p <- p + geom_hline(yintercept = 1, linetype = "dashed")
+    if (plotGenotypeRatio | SNPhood.o@internal$countType == "enrichment") p <- p + geom_hline(yintercept = 1, linetype = "dashed")
     p <- p + .getThemeForGGPlot()
     p <- p + labs(colour = legendTitle)
     
     if (length(datasets) == 1) {
         if (!testNull(readGroupColors)) p <- p + scale_colour_manual(values = readGroupColors)
     } else {
-        p <- p + scale_colour_manual(values = .generateColorsForReadGroupsAndDatasets(length(datasets), length(readGroups), colorPalette, saturationMin = 0.3, deleteFirst = FALSE, deleteLast = TRUE))
+        
+        labelsTrimmed = c()
+        for (labelCur in unique(plot.df$label)) {
+            if (nchar(labelCur) > maxWidthLabels) {
+                labelCur = paste0(strtrim(labelCur, maxWidthLabels), "...")
+            }
+            labelsTrimmed = c(labelsTrimmed, labelCur)
+        }
+        
+        p <- p + scale_colour_manual(values = .generateColorsForReadGroupsAndDatasets(length(datasets), length(readGroups), colorPalette, saturationMin = 0.3, deleteFirst = FALSE, deleteLast = TRUE),
+                                     labels = labelsTrimmed)
     } 
     
+    
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     
     if (plotGraph) {
@@ -708,6 +798,8 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
 #' @template sizePoints
 #' @template plotGraph
 #' @template fileToPlot
+#' @template verbose_FALSE
+#' 
 #' @template ggplotReturn
 #' @examples
 #' data(SNPhood.o, package="SNPhood")
@@ -720,14 +812,22 @@ plotBinCounts <- function(SNPhood.o, region = 1, readGroups = NULL, datasets = N
 #' 
 #' @export
 plotAllelicBiasResultsOverview <- function(SNPhood.o, regions = 1, datasets = NULL, plotChr = NULL, plotStartPos = NULL, plotEndPos = NULL, ylim = NULL, plotRegionBoundaries = FALSE, plotRegionLabels = FALSE,      
-                                           signThreshold = 0.05, pValueSummary = "min", maxWidthLabels = 25, colorPalette = "Set1", sizePoints = 4, plotGraph = TRUE, fileToPlot = NULL) {
+                                           signThreshold = 0.05, pValueSummary = "min", maxWidthLabels = NULL, colorPalette = "Set1", sizePoints = 4, plotGraph = TRUE, fileToPlot = NULL, verbose = FALSE) {
+    
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+    
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
     }
     
     .plotRegionFeatures(SNPhood.o, regions = regions, readGroups = NULL, datasets = datasets, mergeReadGroupCounts = FALSE, plotChr = plotChr, plotStartPos = plotStartPos, plotEndPos = plotEndPos, ylim = ylim, plotRegionBoundaries = plotRegionBoundaries, plotRegionLabels = plotRegionLabels, plotAllelicBiasResults = TRUE,         
-                        signThreshold = signThreshold, pValueSummary = pValueSummary, maxWidthLabels = maxWidthLabels, colorPalette = colorPalette,  sizePoints = sizePoints, plotGraph = plotGraph, fileToPlot = fileToPlot)
+                        signThreshold = signThreshold, pValueSummary = pValueSummary, maxWidthLabels = maxWidthLabels, colorPalette = colorPalette,  sizePoints = sizePoints, plotGraph = plotGraph, fileToPlot = fileToPlot, verbose = verbose)
+    
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
 }  
 
@@ -751,8 +851,11 @@ plotAllelicBiasResultsOverview <- function(SNPhood.o, regions = 1, datasets = NU
 #' @template maxWidthLabels
 #' @template colorPalette
 #' @template sizePoints
+#' @param type Character(1). "p" or "l". Default "p". What type of plot should be drawn, points ("p") or lines ("l")?
 #' @template plotGraph
 #' @template fileToPlot
+#' @template verbose_FALSE
+#' 
 #' @template ggplotReturn
 #' @examples
 #' data(SNPhood.o, package="SNPhood")
@@ -768,26 +871,35 @@ plotAllelicBiasResultsOverview <- function(SNPhood.o, regions = 1, datasets = NU
 #' @export
 #' @import checkmate 
 plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGroups = NULL, mergeReadGroupCounts = FALSE, plotChr = NULL, plotStartPos = NULL, plotEndPos = NULL, ylim = NULL, plotRegionBoundaries = FALSE, plotRegionLabels = FALSE,           
-                             maxWidthLabels = 25, colorPalette = "Set1",  sizePoints = 4, plotGraph = TRUE, fileToPlot = NULL) {
+                             maxWidthLabels = NULL, colorPalette = "Set1",  sizePoints = 4, type = "p", plotGraph = TRUE, fileToPlot = NULL, verbose = FALSE) {
+    
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     assertFlag(mergeReadGroupCounts) 
     
     .plotRegionFeatures(SNPhood.o, regions = regions, readGroups = readGroups, datasets = datasets, mergeReadGroupCounts = mergeReadGroupCounts, plotChr = plotChr, plotStartPos = plotStartPos, plotEndPos = plotEndPos, ylim = ylim, plotRegionBoundaries =  plotRegionBoundaries, plotRegionLabels = plotRegionLabels, plotAllelicBiasResults = FALSE,         
-                        maxWidthLabels = maxWidthLabels, colorPalette = colorPalette, sizePoints = sizePoints, plotGraph = plotGraph, fileToPlot = NULL)
-}
+                        maxWidthLabels = maxWidthLabels, colorPalette = colorPalette, sizePoints = sizePoints, type = type, plotGraph = plotGraph, fileToPlot = NULL, verbose = verbose)
 
-#' @import checkmate S4Vectors
-#' @importFrom RColorBrewer brewer.pal
-#' @importFrom grDevices colorRampPalette
-#' @importFrom ggplot2 ggplot aes xlab ylab geom_point coord_cartesian ggtitle geom_vline labs scale_colour_manual scale_x_continuous theme
-.plotRegionFeatures <- function(SNPhood.o, regions = NULL, readGroups = NULL, datasets = NULL, mergeReadGroupCounts = FALSE, plotChr = NULL, plotStartPos = NULL, plotEndPos = NULL, ylim = NULL, plotRegionBoundaries = FALSE, plotRegionLabels = FALSE, plotAllelicBiasResults = FALSE,         
-                                signThreshold = 0.05, pValueSummary = "min", maxWidthLabels = 25, colorPalette = "Set1", sizePoints = 4, plotGraph = TRUE, fileToPlot = NULL) {
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
-    .checkObjectValidity(SNPhood.o)
+    }
+
+#' @import checkmate 
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom stats median
+#' @importFrom grDevices colorRampPalette
+#' @importFrom ggplot2 ggplot aes_ xlab ylab geom_point coord_cartesian ggtitle geom_vline labs scale_colour_manual scale_x_continuous theme
+.plotRegionFeatures <- function(SNPhood.o, regions = NULL, readGroups = NULL, datasets = NULL, mergeReadGroupCounts = FALSE, plotChr = NULL, plotStartPos = NULL, plotEndPos = NULL, ylim = NULL, plotRegionBoundaries = FALSE, plotRegionLabels = FALSE, plotAllelicBiasResults = FALSE,         
+                                signThreshold = 0.05, pValueSummary = "min", maxWidthLabels = NULL, colorPalette = "Set1", sizePoints = 4, type = "p", plotGraph = TRUE, fileToPlot = NULL, verbose = TRUE) {
     
     if (testNull(datasets)) {
         datasets = annotationDatasets(SNPhood.o)
     }
+    
+    #TODO: What should be displayed when an enrichment is calculated? The current version makes no sense
     
     readGroupsOrigLabel = NULL
     
@@ -822,7 +934,15 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
     allowedPalettes = c("Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3")
     assertChoice(colorPalette, allowedPalettes)
     
-    assertIntegerish(maxWidthLabels, lower = 1, any.missing = FALSE, len = 1)
+    assertInt(sizePoints, lower = 0)
+    assertSubset(type, c("p", "l"))
+    
+    assert(checkNull(maxWidthLabels), checkIntegerish(maxWidthLabels, lower = 1, any.missing = FALSE, len = 1))
+    
+    if (testNull(maxWidthLabels)) {
+        maxWidthLabels = 9999
+    }
+    
     
     assertFlag(plotRegionBoundaries)
     assertFlag(plotAllelicBiasResults)
@@ -836,7 +956,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
         pdf(fileToPlot)
     }
     
-    assertPercentage(signThreshold)
+    assertNumber(signThreshold, lower = 0, upper = 1)
     
     
     if (!testNull(plotChr)) {
@@ -868,7 +988,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
         chr = as.character(seqnames(SNPhood.o@annotation$regions[regions]))
         
         if (length(unique(chr)) > 1) {
-            stop("The requested SNP regions lie on different chromosomes (",paste0(unique(chr), collapse =","),"). Only one particular chromosome can be plotted at once.")
+            stop("The requested SNP regions lie on different chromosomes (",paste0(unique(chr), collapse = ","), "). Only one particular chromosome can be plotted at once.")
         }
         
         startPos = as.numeric(start(SNPhood.o@annotation$regions[regions]))
@@ -911,7 +1031,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
             
             for (j in 1:length(datasets)) {
                 
-                datasetCur = datasets[j]
+                datasetCur = annotationDatasets(SNPhood.o)[datasets[j]]
                 
                 # Construct label name
                 if (mergeReadGroupCounts) {
@@ -919,10 +1039,10 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
                     label = paste0(readGroups,collapse = ",")
                     if (!testNull(readGroupsOrigLabel)) label = "all" 
                     
-                    datasetName = paste0(j,": ",strtrim(label, maxWidthLabels))
+                    datasetName = paste0(datasetCur,": ",strtrim(label, maxWidthLabels))
                     
                 } else {
-                    datasetName = paste0(j,": ",strtrim(readGroups[i], maxWidthLabels))
+                    datasetName = paste0(datasetCur,": ",strtrim(readGroups[i], maxWidthLabels))
                     
                 }
                 
@@ -967,7 +1087,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
         
         for (j in seq_len(length(datasets))) {
             
-            datasetName = paste0(datasets[j])
+            datasetName = annotationDatasets(SNPhood.o)[datasets[j]]
             
             for (k in 1:length(regions)) {
                 regionsCur = regions[k]
@@ -988,7 +1108,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
         }
         
         # Subset with only the significant ones
-        plot.df$sign  = plot.df$value <= signThreshold
+        plot.df$sign  = as.factor(plot.df$value <= signThreshold)
         nSign = length(which(plot.df$sign == TRUE))
         
         plot.df$value = -log(plot.df$value ,10)  
@@ -1025,27 +1145,29 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
     
     
     xLabLabel = paste0("\nPosition on chromosome ", plotChr,"(in bp)")
+    regionStr = paste0(plotChr, ":", .prettyNum(plotStartPos),"-", .prettyNum(plotEndPos))
     
     if (plotRegionLabels) {
-        xLabLabel = paste0("\nPosition on chromosome ", plotChr, ":", plotStartPos,"-", plotEndPos)
+        xLabLabel = paste0("\nPosition on chromosome ", regionStr)
         
         axis.df = plot.df[,c("SNPName", "SNPPos")]
         axis.df = axis.df[!duplicated(axis.df),]
         axis.df = axis.df[order(axis.df$SNPPos, decreasing = FALSE),]
     }
     
-    mainLabel = paste0(.getBinLabelYAxis(SNPhood.o), " for the region\n",plotChr, ":", plotStartPos,"-", plotEndPos," (covering ",length(regions)," SNPs)")
+    mainLabel = paste0(.getBinLabelYAxis(SNPhood.o), " for the region\n", regionStr," (covering ",length(regions)," SNPs)")
     if (plotAllelicBiasResults) {
         
         labelDataset = ifelse(length(datasets) > 1, "datasets", "dataset")
         mainLabel = paste0("Allelic bias overview (", 
                            SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested[1], " vs. ",
                            SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested[2], 
-                           ") for the region\n",plotChr, ":", plotStartPos,"-", plotEndPos," across ",
-                           length(datasets), " ",labelDataset, " (covering ",length(regions)," SNPs). \n",
+                           ") for the region\n",
+                           plotChr, ":", .prettyNum(plotStartPos),"-", .prettyNum(plotEndPos),
+                           " across ", length(datasets), " ",labelDataset, " (covering ",length(regions)," SNPs). \n",
                            "Significant results: ",nSign, " out of ", nrow(plot.df))
         
-    }
+    } 
     
     legendTitle = "Dataset: read group"
     if (plotAllelicBiasResults) {
@@ -1053,15 +1175,27 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
     }
     
     if (plotAllelicBiasResults) {
-        p <- ggplot(plot.df, aes(x = SNPPos, y = value, colour = datasetAndReadGroup, shape = as.factor(sign))) + xlab(xLabLabel) + ylab(yLabLabel) + geom_point(size = sizePoints)
+        p <- ggplot(plot.df, aes_(~SNPPos, ~value, colour = ~datasetAndReadGroup, shape = ~sign)) + xlab(xLabLabel) + .getYLab(yLabLabel, discreteScale = FALSE)
         
+        if (type == "p") {
+            p <- p + geom_point(size = sizePoints) 
+        } else {
+            p <- p + geom_line()
+        }
         # handle special cases when all values are significant or non significant
         shapeValues = c(1,19)
-        if (all(plot.df$sign))   shapeValues = 19
-        if (all(!plot.df$sign))  shapeValues = 1
+        if (all(as.logical(plot.df$sign)))   shapeValues = 19
+        if (all(!as.logical(plot.df$sign)))  shapeValues = 1
         p <- p + scale_shape_manual(values = shapeValues)
     } else {
-        p <- ggplot(plot.df, aes(x = SNPPos, y = value, colour = datasetAndReadGroup)) + xlab(xLabLabel) + ylab(yLabLabel) + geom_point(size = sizePoints, shape = 19)
+        p <- ggplot(plot.df, aes_(~SNPPos, ~value, colour = ~datasetAndReadGroup)) + xlab(xLabLabel) + .getYLab(yLabLabel)
+        
+        if (type == "p") {
+            p <- p +  geom_point(size = sizePoints, shape = 19)
+        } else {
+            p <- p + geom_line(shape = 19)
+        }
+        
     }
     
     
@@ -1109,7 +1243,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
 #' will be plotted. Otherwise, only the clusters as specified by the user are plotted, omitting regions belonging to other clusters. This
 #' is useful to, for example, only display regions that show a bin-dependent pattern and are not invariant across the whole user region.
 #' @template fileToPlot
-#' @template verbose
+#' @template verbose_FALSE
 #' @param ... Additional graphical parameters that can be used to modify the output of the function levelplot (panel.levelplot). 
 #' See ?levelplot for details.
 #' @return The clustering reports the cluster in which each SNP falls, the average silhouette for pam clustering, plots for the clustered reads and a summary plot of average reads per cluster across the region being analyzed. 
@@ -1121,16 +1255,19 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
 #' @import checkmate
 #' @importFrom lattice levelplot
 
-plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3, normalize = TRUE, clustersToPlot = NULL, fileToPlot = NULL, verbose = TRUE, ...) {
+plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3, normalize = TRUE, clustersToPlot = NULL, fileToPlot = NULL, verbose = FALSE, ...) {
     
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
     }
     assertIntegerish(nClustersVec, any.missing = FALSE, min.len = 1, unique = TRUE, lower = 2)
-    assertChoice(readGroup, annotationReadGroups(SNPhood.o))   
     
+    readGroup = .checkAndConvertReadGroupArgument(SNPhood.o, readGroup)
     dataset = .checkAndConvertDatasetArgument(SNPhood.o, dataset, nullAllowed = FALSE, maxLength = 1) 
     assertFlag(normalize)
     
@@ -1140,13 +1277,8 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
     if (!testNull(fileToPlot)) {
         assertDirectory(dirname(fileToPlot), access = "r")
     }
-    
-    
-    if (SNPhood.o@internal$calcEnrichment & !parameters(SNPhood.o)$normByInput) {
-        stop("Cannot do clustering on an enrichment matrix because input normalization has not been performed.")
-    }
-    
-    type = ifelse(SNPhood.o@internal$calcEnrichment, "enrichmentBinned", "binned")
+
+    type = ifelse(SNPhood.o@internal$countType == "enrichment", "enrichmentBinned", "binned")
     
     target.m = counts(SNPhood.o, type = type, readGroup = readGroup, dataset = dataset)
     
@@ -1192,6 +1324,7 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
     
     if (!is.null(fileToPlot)) dev.off()
     
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
 
     SNPhood.o
     
@@ -1206,7 +1339,7 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
 #' @template readGroup
 #' @template dataset
 #' @template fileToPlot
-#' @template verbose
+#' @template verbose_FALSE
 #' @seealso \code{plotAndClusterMatrix}
 #' @export 
 #' @template ggplotReturn
@@ -1215,17 +1348,24 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
 #' plot = plotClusterAverage(SNPhood.o, readGroup = "paternal", dataset = 1)
 
 #' @import checkmate
-plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL, verbose = TRUE) {
+plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL, verbose = FALSE) {
     
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
     }
-    
-    assertChoice(readGroup, annotationReadGroups(SNPhood.o))  
-    
+
+    readGroup = .checkAndConvertReadGroupArgument(SNPhood.o, readGroup)
     dataset = .checkAndConvertDatasetArgument(SNPhood.o, dataset, nullAllowed = FALSE, maxLength = 1) 
+    
+    assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
+    if (!testNull(fileToPlot)) {
+        assertDirectory(dirname(fileToPlot), access = "r")
+    }
     
     # Retrieve the clustering results
     if (testNull(SNPhood.o@additionalResults$clustering[[readGroup]][[dataset]])) {
@@ -1250,7 +1390,8 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
     
     if (!testNull(fileToPlot)) dev.off()  
     
-    
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
+
     plots.l
 }
 
@@ -1258,8 +1399,6 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
 #' @importFrom reshape2 melt
 #' @importFrom grDevices pdf dev.off
 .plotClusterAverage <- function(SNPhood.o, clusteringResults, fileToPlot = NULL) {
-    
-    .checkObjectValidity(SNPhood.o)
     
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
@@ -1272,14 +1411,14 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
     assertSubset(c("clusteringMatrix","plots"), names(PamObj))
     
     pam_cluster <- PamObj$clusteringMatrix[[1]]
-    stopifnot(ncol(pam_cluster)>2)
+    stopifnot(ncol(pam_cluster) > 2)
     splitting_pam <- split(pam_cluster, pam_cluster$cluster)
     colsTake <- grep("bin", colnames(pam_cluster))
     split_pam <- lapply(splitting_pam, function(x) x[colsTake])
     split_pam <- lapply(split_pam, function(x) colMeans(x))
     split_pam_melt  <- reshape2::melt(split_pam)
     
-    allBins<-SNPhood.o@internal$plot_labelBins
+    allBins <- SNPhood.o@internal$plot_labelBins
     
     takethis <- rep(allBins, length(unique(split_pam_melt$L1)))
     bins <- rep(1:length(colsTake), length(unique(split_pam_melt$L1)))
@@ -1298,21 +1437,17 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
     split_pam_melt$Cluster <- factor(split_pam_melt$Cluster)
     levels(split_pam_melt$Cluster) <- freqLabel
     
+    # TODO: check if geom point has to be used in special cases
     
-    posVerticalLinewhich <- which(allBins == SNPhood.o@internal$plot_origBinSNPPosition)
-    
-    
-    p <- ggplot(split_pam_melt, aes(x = bins, y = value)) + geom_line(aes(col = Cluster, group = Cluster))
-    p <- p + xlab(.getBinLabelXAxis(SNPhood.o)) + ylab("Average enrichment per cluster") + theme_bw()
+    p <- ggplot(split_pam_melt, aes_(~bins, ~value)) + geom_line(aes_(col = ~Cluster, group = ~Cluster))
+    p <- p + xlab(.getBinLabelXAxis(SNPhood.o)) + .getYLab("Average enrichment per cluster") + theme_bw()
     p <- p + .getBinAxisLabelsForGGPlot(SNPhood.o@internal$plot_labelBins)
     p <- p + .getVerticalLineForGGPlot(SNPhood.o@internal$plot_origBinSNPPosition)
     p <- p + .getThemeForGGPlot()
     
     
     print(p)
-    
-    
-    
+
     return(p)
     
 }
@@ -1328,6 +1463,8 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
 #' @template fileToPlot
 #' @param printPlot Logical(1). Default TRUE. Should the plots be printed? Only relevant if \code{fileToPlot} is set to NULL; otherwise, the plots
 #' are always printed to the output file.
+#' @template verbose_FALSE
+#' 
 #' @template ggplotReturn
 #' @export
 #' @seealso \code{\link{plotAndCalculateWeakAndStrongGenotype}}
@@ -1337,13 +1474,16 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
 #' SNPhood_merged.o = plotAndCalculateWeakAndStrongGenotype(SNPhood_merged.o)
 #' plot = plotGenotypesPerCluster(SNPhood_merged.o, printPlot = FALSE)
 
-#' @importFrom ggplot2 ggplot scale_x_discrete aes geom_line facet_grid theme_bw geom_vline element_blank ggtitle
+#' @importFrom ggplot2 ggplot scale_x_discrete aes_ geom_line facet_grid theme_bw geom_vline element_blank ggtitle
 #' @importFrom grDevices pdf dev.off
 #' @importFrom reshape2 melt
 #' @import checkmate
-plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot = NULL, printPlot = TRUE) {
+plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot = NULL, printPlot = TRUE, verbose = FALSE) {
     
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -1371,15 +1511,14 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
         assertDirectory(dirname(fileToPlot), access = "r")
     }
     
-    plotsGenotypes = vector("list",length(type))
+    nElems = length(SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[1]]$clusteringMatrix)
     
-    plotsGenotypes = lapply(plotsGenotypes, 
-                                  function(x) vector("list",length(SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[1]]$clusteringMatrix)))
- 
     
+    
+    plotsGenotypes = lapply(1:length(SNPhood.o@additionalResults$genotype$clustering), function(x) vector("list",nElems))
+
     header = c("strong","weak")
     
-
     nPlots = 1
     
     for (j in 1:length(plotsGenotypes)) {
@@ -1399,10 +1538,12 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
             colnames(melt_Genotypes) = c("value","Genotype","L1", "index")
             melt_Genotypes$L1 = paste("Cluster",melt_Genotypes$L1)
             
-            p = ggplot(melt_Genotypes,aes(x=index,y=value)) + geom_line(aes(col=Genotype, group=Genotype))
-            p <- p + facet_grid(.~L1) + theme_bw() + geom_vline(xintercept=linePos, linetype = "longdash")
+            # TODO: check if geom point has to be used in special cases
+            
+            p = ggplot(melt_Genotypes,aes_(~index, ~value)) + geom_line(aes_(col = ~Genotype, group = ~Genotype))
+            p <- p + facet_grid(.~ L1) + theme_bw() + geom_vline(xintercept = linePos, linetype = "longdash")
            
-            p <- p + ylab("Average Reads") 
+            p <- p + .getYLab("Average reads") 
             if (printBinLabels) {
                 p <- p + scale_x_discrete(labels = SNPhood.o@internal$plot_labelBins)
             } else {
@@ -1432,6 +1573,7 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
     
     if (!testNull(fileToPlot)) dev.off()
     
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
 
     plotsGenotypes
 }
@@ -1445,6 +1587,7 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
 #' @template SNPhood
 #' @template regions
 #' @template fileToPlot
+#' @template verbose_FALSE
 
 #' @template ggplotReturn
 #' @examples
@@ -1453,12 +1596,15 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
 #' @seealso \code{\link{plotAndClusterMatrix}}
 #' @export
 #' @import checkmate 
-#' @importFrom ggplot2 ggplot aes geom_bar ylab scale_y_discrete theme element_text
+#' @importFrom ggplot2 ggplot aes_ geom_bar ylab scale_y_discrete theme element_text
 #' @importFrom reshape2 melt
 #' @importFrom grDevices pdf dev.off
-plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
+plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL, verbose = FALSE) {
     
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -1483,7 +1629,7 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
     
     
     genotype = annotation(SNPhood.o)$genotype$external[regions, ]
-    genotype<-genotype[,4:ncol(genotype)]
+    genotype <-genotype[,4:ncol(genotype)]
     rownames(genotype) <- annotationRegions(SNPhood.o)[regions]
     
     rowsToDelete = which(rowSums(is.na(genotype)) == ncol(genotype))
@@ -1504,10 +1650,10 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
         message(paste("Individual", Nas," does not have any genotype information and will be excluded \n"))
     }
     
-    for (i in 1:ncol(genotypes_individuals_refined)){
-        splitGenotypes <-strsplit(x = as.character(genotypes_individuals_refined[,i]),"[^0-9]+")
-        splitGenotypes <-lapply(splitGenotypes,as.numeric)
-        genotypes_individuals_refined[,i]<-unlist(lapply(splitGenotypes,sum))
+    for (i in 1:ncol(genotypes_individuals_refined)) {
+        splitGenotypes <- strsplit(x = as.character(genotypes_individuals_refined[,i]), "[^0-9]+")
+        splitGenotypes <- lapply(splitGenotypes,as.numeric)
+        genotypes_individuals_refined[,i] <- unlist(lapply(splitGenotypes,sum))
         
         
     }
@@ -1543,8 +1689,8 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
     
     sumEachGenotype_melt$Genotype <- factor(sumEachGenotype_melt$Genotype, levels = c(0,1,2))
     
-    p <- ggplot(sumEachGenotype_melt, aes(x = SNP, y = value, fill = Genotype)) + geom_bar(position = "dodge", stat = "identity") 
-    p <- p + ylab("Number of datasets per genotype")
+    p <- ggplot(sumEachGenotype_melt, aes_(~SNP, ~value, fill = ~Genotype)) + geom_bar(position = "dodge", stat = "identity") 
+    p <- p + .getYLab("Number of datasets per genotype")
     p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
     
     
@@ -1556,6 +1702,8 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
     } else {
         print(p)
     }
+    
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     return(p)
 }
@@ -1569,7 +1717,7 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
 #' @template normalize
 #' @template nClusters
 #' @template fileToPlot
-#' @template verbose
+#' @template verbose_FALSE
 #' @return Modified \code{\linkS4class{SNPhood}} object with the results of the analysis stored in the object. 
 #' Specifically, a matrix for average reads per SNP for datasets which have strong and weak genotypes, respectively, are stored in the
 #' slot additionalResults$genotype. 
@@ -1584,7 +1732,11 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL) {
 #' @import checkmate
 plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, nClustersVec = 3, fileToPlot = NULL, verbose = FALSE) {
     
-    .checkObjectValidity(SNPhood.o)
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+    
     assertFlag(normalize)
     assertIntegerish(nClustersVec, any.missing = FALSE, min.len = 1, unique = TRUE, lower = 2)
     assertFlag(verbose)
@@ -1639,7 +1791,7 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     filterdGenotypes = filterdGenotypes[naGenotypes,]
     
     SNPhood.o@readCountsBinned[[annotationReadGroups(SNPhood.o)]] <- lapply(SNPhood.o@readCountsBinned[[annotationReadGroups(SNPhood.o)]], 
-                                                                            function(x){ row.names(x)<-rownames(onlyGenotypes); x})
+                                                                            function(x){ row.names(x) <- rownames(onlyGenotypes); x})
     
     refinedIndividualFiles <- lapply(SNPhood.o@readCountsBinned[[annotationReadGroups(SNPhood.o)]], 
                                      function(x) x[match(row.names(filterdGenotypes), row.names(x)), ])
@@ -1709,7 +1861,14 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
         SNPhood.o@additionalResults$genotype$clustering$weakGenotypes[[paste0("nClusters",nClusters)]]   = .pamClustering(SNPhood.o, as.matrix(weak_genotypes  [,1:nBins(SNPhood.o)]), nClusters)
     }
     
-    if (!is.null(fileToPlot)) dev.off()
+    print(SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[paste0("nClusters",nClusters)]][["plots"]])
+    print(SNPhood.o@additionalResults$genotype$clustering$weakGenotypes[[paste0("nClusters",nClusters)]][["plots"]])
+    
+    if (!is.null(fileToPlot)) {
+        dev.off()
+    } 
+    
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     SNPhood.o
 }
@@ -1720,10 +1879,10 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
 .getThemeForGGPlot <- function(verticalLines = TRUE) {
     
     if (verticalLines) {
-        theme(panel.grid.minor.y=element_blank(),panel.grid.major.y=element_blank()) + theme_bw()
+        theme(panel.grid.minor.y = element_blank(),panel.grid.major.y = element_blank()) + theme_bw()
     } else {
-        theme(panel.grid.minor.y=element_blank(),panel.grid.major.y=element_blank(),
-              panel.grid.minor.x=element_blank(),panel.grid.major.x=element_blank()) + theme_bw()
+        theme(panel.grid.minor.y = element_blank(),panel.grid.major.y = element_blank(),
+              panel.grid.minor.x = element_blank(),panel.grid.major.x = element_blank()) + theme_bw()
     }
     
 }
@@ -1737,21 +1896,49 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
 #' @importFrom ggplot2 scale_x_discrete
 .getBinAxisLabelsForGGPlot <- function(binPos) {
     
-    scale_x_discrete(labels = binPos)
+    binPosMod = binPos
+    nBinsCur = length(binPos)
+    
+    indexesToKeep = which(binPos == as.integer((nBinsCur/2)) | binPos == as.integer((-nBinsCur/2)))
+    
+    if (nBinsCur > 20) {
+        indexesToKeep = c(indexesToKeep, which(binPos == as.integer(nBinsCur / 2 / 2) | binPos == as.integer(-nBinsCur / 2 / 2)))
+    }
+    
+   
+        
+    if (length(which(binPos == "0")) == 1) {
+        indexesToKeep = c(indexesToKeep, which(binPos == "0"))
+        binPosMod[setdiff(c(1:length(binPos)), indexesToKeep)] = ""
+        return(scale_x_discrete(labels =  binPosMod))
+    } else {
+        binPosMod[setdiff(c(1:length(binPos)), indexesToKeep)] = ""
+        
+        posNew  = c(as.numeric(names(binPosMod)),40.5)
+        labelNew = c(as.character(binPosMod),"0")
+        
+        return(scale_x_continuous(labels = labelNew, breaks= posNew))
+    }
+    
+
+    
+
+    
 }
 
 #' @import checkmate
 .produceTitleForPlot <- function(SNPhood.o, region) {
     
-    .checkObjectValidity(SNPhood.o)
-    assertIntegerish(region, lower = 1, upper = nRegions(SNPhood.o), len = 1)
+    assertIntegerish(region, lower = 1, upper = nRegions(SNPhood.o), min.len = 1)
     
     plotChr          = as.character(seqnames(SNPhood.o@annotation$regions)  [region]) 
-    plotStartPos     = as.character(start  (SNPhood.o@annotation$regions)   [region]) 
-    plotEndPos       = as.character(end    (SNPhood.o@annotation$regions)   [region])  
+    plotStartPos     = .prettyNum(start(SNPhood.o@annotation$regions) [region])
+    plotEndPos       = .prettyNum(end  (SNPhood.o@annotation$regions) [region])
     mainLabel = paste0(annotationRegions(SNPhood.o)[region],
                        " (", plotChr, ":",  plotStartPos, "-", plotEndPos, ")"
     )
+    
+    
     
     mainLabel
     
@@ -1768,7 +1955,7 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     assertIntegerish(nDatasets, any.missing = FALSE, len = 1, lower = 1)
     assertIntegerish(nReadGroups, any.missing = FALSE, len = 1, lower = 1)
     assertChoice(paletteName, names(allowedPalettesMaxColors))
-    assertPercentage(saturationMin)
+    assertNumber(saturationMin, lower = 0, upper = 1)
     assertFlag(deleteFirst)
     assertFlag(deleteLast)
     
@@ -1787,12 +1974,18 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
         
     }
     
-    
-    
-    
     saturationMax = 1
-    saturationDiffStep = (saturationMax - saturationMin) / (nReadGroups - 1)
-    saturation.vec = seq(saturationMax, saturationMin, -saturationDiffStep)
+    
+    if (nReadGroups == 1) {
+        
+        saturation.vec = saturationMax
+        
+    } else {# With multiple read groups, change the saturation values to distinguish the read groups
+
+        saturationDiffStep = (saturationMax - saturationMin) / (nReadGroups - 1)
+        saturation.vec = seq(saturationMax, saturationMin, -saturationDiffStep)
+    }
+
     
     col.vec = c()
     for (i in 1:nReadGroups) {
@@ -1812,10 +2005,10 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
 
 .getBinLabelXAxis <- function(SNPhood.o) {
     
-    paste0("\nDistance from SNP in ",SNPhood.o@config$binSize," bp bins")
+    paste0("\nDistance from SNP in ", .prettyNum(SNPhood.o@config$binSize)," bp bins")
 }
 
-.getBinLabelYAxis <- function(SNPhood.o) {
+.getBinLabelYAxis <- function(SNPhood.o, startLowercase = FALSE) {
     
     label = "Read counts"
     
@@ -1825,13 +2018,35 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
         label = "Enrichment"
     } 
     
+    if (startLowercase) {
+        label = paste0(tolower(substring( label, 1,1)), substring( label, 2))
+
+    }
+    
     label
     
+}
+
+#' @importFrom ggplot2 scale_y_continuous scale_y_discrete
+#' @importFrom scales comma
+.getYLab <- function(label, discreteScale = FALSE) {
+    
+    if (discreteScale) {
+        return(scale_y_discrete(name = label, labels = comma))
+    } else {
+        return(scale_y_continuous(name = label, labels = comma))
+    }
+   
+
 }
 
 .getErrorMessageReadGroupSpecificty <- function() {
     
     paste0("Read counts are stored specifically for each read group in the SNPhood object. This function requires non-allele-specific reads, however. Run the function mergeReadGroups first and try again.")
     
+}
+
+.prettyNum <- function(number) {
+    prettyNum(number, big.mark = ",", scientific = FALSE)
 }
 

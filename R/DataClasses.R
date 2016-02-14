@@ -134,7 +134,7 @@ setGeneric("parameters", function(object, ...) standardGeneric("parameters"))
 #' @aliases parameters
 #' @return A named list with all parameters and its current values of the \code{SNPhood} object.
 #' @examples
-#' data(SNPhood, package="SNPhood")
+#' data(SNPhood.o, package="SNPhood")
 #' parameters(SNPhood.o)
 #' @export
 setMethod("parameters", "SNPhood", function(object, ...) {object@config})
@@ -155,13 +155,13 @@ setMethod("parameters", "SNPhood", function(object, ...) {object@config})
 #' @docType methods
 #' @rdname counts-method
 #' @examples
-#' data(SNPhood, package="SNPhood")
+#' data(SNPhood.o, package="SNPhood")
 #' str(counts(SNPhood.o))
 #' str(counts(SNPhood.o, readGroup = "paternal", dataset = 1))
 #' str(counts(SNPhood.o, readGroup = c("maternal", "paternal"), dataset = 1))
 #' @seealso \code{\link{SNPhood}}, \code{\link{enrichment}}
 #' @export
-#' @import BiocGenerics
+#' @importFrom BiocGenerics counts
 setMethod("counts", "SNPhood", function(object, type = "binned", readGroup = NULL, dataset = NULL, ...) {.getCounts(object, type, readGroup, dataset)})
 
 #' @import checkmate
@@ -265,6 +265,10 @@ setMethod("counts", "SNPhood", function(object, type = "binned", readGroup = NUL
         
     }
     
+    if (length(counts.l) == 0) {
+        warning("Returning an empty list. If you asked for counts after binning (type = \"binned\"), you may accidentally set the parameter \"onlyPrepareForDatasetCorrelation\" to TRUE in the main function. In this case, run the function analyzeSNPhood again and set the parameter to FALSE. See also the help pages.")
+    }
+    
     return(counts.l)
     
 }
@@ -296,7 +300,7 @@ setGeneric("enrichment", function(object, ...) standardGeneric("enrichment"))
 #' @rdname enrichment-methods
 #' @aliases enrichment
 #' @examples
-#' data(SNPhood, package="SNPhood")
+#' data(SNPhood.o, package="SNPhood")
 #' str(enrichment(SNPhood.o), list.len=5)
 setMethod("enrichment", "SNPhood", function(object, readGroup = NULL, dataset = NULL, ...) {.getEnrichment(object, readGroup, dataset)})
 
@@ -322,9 +326,9 @@ setMethod("enrichment", "SNPhood", function(object, readGroup = NULL, dataset = 
 #' @docType methods
 #' @rdname annotation-methods
 #' @aliases annotation
-#' @import BiocGenerics
+#' @importFrom BiocGenerics annotation
 #' @examples 
-#' data(SNPhood, package="SNPhood")
+#' data(SNPhood.o, package="SNPhood")
 #' annotation(SNPhood.o)
 #' annotation(SNPhood.o, elements = "regions")
 #' annotation(SNPhood.o, elements = c("regions", "bins"))
@@ -374,11 +378,12 @@ setMethod("annotation", "SNPhood", function(object, elements = NULL, ...) {.getA
 
 #' @return A list with the results of the requested analysis and elements within.
 #' @examples
-#' data(SNPhood, package="SNPhood")
+#' data(SNPhood.o, package="SNPhood")
 #' head(results(SNPhood.o, type="allelicBias", elements = "parameters"))
 #' head(results(SNPhood.o, type="allelicBias"))
 #' @export
-#' @import checkmate S4Vectors
+#' @import checkmate
+#' @importFrom utils head
 results <- function(SNPhood.o, type, elements = NULL) {
     
     # Check types and validity of arguments 
@@ -538,10 +543,12 @@ setMethod("show",
               nAllelesCur  = nReadGroups(SNPhood.o)
               nBinsCur     = nBins(SNPhood.o)
               nRegionsCur  = nRegions(SNPhood.o)
-
-
               
-              if (SNPhood.o@internal$calcEnrichment) {
+              if (SNPhood.o@config$onlyPrepareForDatasetCorrelation)
+                  cat("!NOTE: Object incomplete because the parameter \"onlyPrepareForDatasetCorrelation\" in the function \"analyzeSNPhood\" has been set to TRUE\n")
+              
+
+              if (SNPhood.o@internal$countType == "enrichment") {
                   type = "Enrichments over input"
               } else {
                   type = "Read counts"
@@ -609,10 +616,18 @@ setMethod("show",
 # SNPhood OBJECT VALIDITY #
 
 
-#' @import methods checkmate
-.checkObjectValidity <- function(object) {
+#' @import checkmate
+#' @importFrom methods validObject
+.checkObjectValidity <- function(object, verbose = FALSE) {
 
     assertClass(object, "SNPhood")
+    
+    if (!is.null(object@internal$disableObjectIntegrityChecking)) {
+        if (object@internal$disableObjectIntegrityChecking == FALSE) {
+            if (verbose) message("Check object integrity and validity. For large objects, this may take some time. Use the function changeObjectIntegrityChecking to disable this check for the object.")
+            
+        }
+    }
     
     res = validObject(object, test = TRUE, complete = TRUE)
     if (testFlag(res)) {
@@ -625,7 +640,9 @@ setMethod("show",
     
 }
 
-#' @import checkmate GenomicRanges
+#' @import checkmate
+#' @import GenomicRanges
+# @importFrom GenomicRanges mcols
 .validSNPhoodObj <- function(object) {
     
     valid = TRUE
@@ -633,6 +650,9 @@ setMethod("show",
     
     # Skip validity check if object has not yet been fully constructed
     if (object@internal$disableObjectIntegrityChecking) return(TRUE) 
+    
+    
+    if (object@config$onlyPrepareForDatasetCorrelation) return(TRUE) 
 
     
     # SLOT ANNOTATION #
@@ -663,17 +683,29 @@ setMethod("show",
         } 
         
         for (i in seq_len(length(object@annotation$files))) {
-            if (!testList(object@annotation$files[[i]], any.missing = FALSE, min.len = 3, types = c("character", "logical"))) {
+            if (!testList(object@annotation$files[[i]], any.missing = FALSE, min.len = 4, types = c("character", "logical", "list"))) {
                 valid = FALSE
-                msg = c(msg, "Each element in \"files\" in slot \"annotation\" must be a list with three elements of type \"character\" or \"logical\".\n")
+                msg = c(msg, "Each element in \"files\" in slot \"annotation\" must be a list with four elements of type \"character\", \"logical\" or \"list\".\n")
             } 
         }
         
         ## Bins ##
-        if (!testCharacter(object@annotation$bins, min.chars = 1, any.missing = FALSE, len = ncol(object@readCountsBinned[[1]][[1]]))) {
-            valid = FALSE
-            msg = c(msg, "The elements bins in the slot \"annotation\" must be of type character with a minimal length of 1 and no missing elements.\n")
-        }  
+        if (!object@config$onlyPrepareForDatasetCorrelation) {
+            
+           
+            if (!object@config$normByInput) {
+                lenMatrix = ncol(object@readCountsBinned[[1]][[1]])
+            } else {
+                lenMatrix = ncol(object@enrichmentBinned[[1]][[1]])
+            }
+            
+            if (!testCharacter(object@annotation$bins, min.chars = 1, any.missing = FALSE, len = lenMatrix)) {
+                valid = FALSE
+                msg = c(msg, "The elements bins in the slot \"annotation\" must be of type character with a minimal length of 1 and no missing elements.\n")
+            }  
+           
+        }
+       
         
         ## Genotype ##
         validNames = c("readsDerived", "external")
@@ -804,12 +836,12 @@ setMethod("show",
         requiredElems = c("isAllelicRatio", 
                           "sizeFactors", 
                           "mergedReadGroups", 
-                          "calcEnrichment",
                           "plot_origBinSNPPosition",
                           "plot_labelBins",
                           "countType",
                           "readWidth",
                           "readStartPos",
+                          "globalBackground",
                           "disableObjectIntegrityChecking",
                           "addResultsElementsAdded"
                           )
@@ -835,13 +867,7 @@ setMethod("show",
             valid = FALSE
             msg = c(msg, "The element mergedReadGroups in the slot \"internal\" must be of type logical.\n")
         }
-        
-        if (!testFlag(object@internal$calcEnrichment)) {
-            valid = FALSE
-            msg = c(msg, "The element calcEnrichment in the slot \"internal\" must be of type logical.\n")
-        }
-        
-        
+
         
         if (!testFlag(object@internal$disableObjectIntegrityChecking)) {
             valid = FALSE
@@ -864,50 +890,56 @@ setMethod("show",
             msg = c(msg, "The names of the element plot_labelBins in the slot \"internal\" must be from 1:", length(object@annotation$bins),".\n")
         }
         
+        if (!testNumber(object@internal$plot_origBinSNPPosition, lower = 1)) {
+            valid = FALSE
+            msg = c(msg, "The element plot_origBinSNPPosition in the slot \"internal\" must be a single number.\n")
+        }
+        
         validValues = c("readCountsRaw", "readCountsNormalized", "enrichment")
         if (!testSubset(object@internal$countType, validValues)) {
             valid = FALSE
             msg = c(msg, "The element countType in the slot \"internal\" must be one of ",paste0(validValues,collapse = ","), ".\n")
         }
         
-        if (!testNumber(object@internal$plot_origBinSNPPosition, lower = 1)) {
+        if (object@internal$countType == "enrichment" & !parameters(object)$normByInput) {
             valid = FALSE
-            msg = c(msg, "The element plot_origBinSNPPosition in the slot \"internal\" must be a single number.\n")
+            msg = c(msg, "The element countType in the slot \"internal\" must match with the value of the parameter normByInput.\n")
         }
 
-        
-            
-        for (i in seq_len(length(object@annotation$readGroups))) {
-            
-            if (!testSubset(names(object@internal$readStartPos)[i], object@annotation$readGroups[i])) {
-                valid = FALSE
-                msg = c(msg, "The names of the read groups are incorrect for the element readStartPos in the slot \"internal\":",paste0(names(object@internal$readStartPos),collapse = ",")," but expected ",paste0(object@annotation$readGroups,collapse = ","),".\n")
-            }
-            
-            for (j in seq_len(length(object@annotation$files))) {
-                
-                if (!testSubset(names(object@internal$readStartPos[[i]])[j], names(object@annotation$files)[j])) {
-                    valid = FALSE
-                    msg = c(msg, "The names of the datasets are incorrect for the element readStartPos in the slot \"internal\".\n")
-                }
-                
-                # Check length, should equal nRegions
-                if (length(object@internal$readStartPos[[i]][[j]]) != length(object@annotation$regions)) {
-                    valid = FALSE
-                    msg = c(msg, "The dimension of the element readStartPos are incorrect in the slot \"internal\".\n")
-                }
 
+        if (length(object@annotation$readGroups) > 1) {
             
-                for (l in seq_len(length(object@annotation$regions))) {
-                    if (!testInteger(object@internal$readStartPos[[i]][[j]][[l]], lower = 1, any.missing = FALSE)) {
+            for (i in seq_len(length(object@annotation$readGroups))) {
+                
+                if (!testSubset(names(object@internal$readStartPos)[i], object@annotation$readGroups[i])) {
+                    valid = FALSE
+                    msg = c(msg, "The names of the read groups are incorrect for the element readStartPos in the slot \"internal\":",paste0(names(object@internal$readStartPos),collapse = ",")," but expected ",paste0(object@annotation$readGroups,collapse = ","),".\n")
+                }
+                
+                for (j in seq_len(length(object@annotation$files))) {
+                    
+                    if (!testSubset(names(object@internal$readStartPos[[i]])[j], names(object@annotation$files)[j])) {
                         valid = FALSE
-                        msg = c(msg, "At least one element in readStartPos in the slot \"internal\" is invalid and does not contain a vector of type Integer.\n")
-                    } 
+                        msg = c(msg, "The names of the datasets are incorrect for the element readStartPos in the slot \"internal\".\n")
+                    }
+                    
+                    # Check length, should equal nRegions
+                    if (length(object@internal$readStartPos[[i]][[j]]) != length(object@annotation$regions)) {
+                        valid = FALSE
+                        msg = c(msg, "The dimension of the element readStartPos are incorrect in the slot \"internal\".\n")
+                    }
+    
+                
+                    for (l in seq_len(length(object@annotation$regions))) {
+                        if (!testInteger(object@internal$readStartPos[[i]][[j]][[l]], lower = 1, any.missing = FALSE)) {
+                            valid = FALSE
+                            msg = c(msg, "At least one element in readStartPos in the slot \"internal\" is invalid and does not contain a vector of type Integer.\n")
+                        } 
+                    }
+                   
                 }
-               
             }
         }
-        
     }
     
     
@@ -934,63 +966,91 @@ setMethod("show",
         for (readGroup in object@annotation$readGroups) {
             
             testSetEqual(names(object@annotation$files), names(object@readCountsUnbinned[[readGroup]]))
-            testSetEqual(names(object@annotation$files), names(object@readCountsBinned[[readGroup]])) 
             
-            # Test enrichment slot also
+            if (!object@config$onlyPrepareForDatasetCorrelation)  {
+               
+                 testSetEqual(names(object@annotation$files), names(object@readCountsBinned[[readGroup]])) 
+                
+                # Test enrichment slot also
+                if (length(object@enrichmentBinned[[1]]) > 0) {
+                    testSetEqual(names(object@annotation$files), names(object@enrichmentBinned[[readGroup]])) 
+                }
+            } 
+                
+            
+           
+        }
+        
+        if (!object@config$onlyPrepareForDatasetCorrelation)  {
+        
+            if (!testList(object@readCountsUnbinned, any.missing = FALSE, len = length(object@annotation$readGroups), types = "list") |
+                !testList(object@readCountsBinned,   any.missing = FALSE, len = length(object@annotation$readGroups), types = "list") |
+                !testList(object@enrichmentBinned,       any.missing = FALSE, len = length(object@annotation$readGroups), types = "list") |
+                !testSetEqual(object@annotation$readGroups, names(object@readCountsUnbinned)) | 
+                !testSetEqual(object@annotation$readGroups, names(object@readCountsBinned))    |
+                !testSetEqual(object@annotation$readGroups, names(object@enrichmentBinned))     
+            ) {
+                valid = FALSE
+                msg = c(msg, "Slots \"readCountsUnbinned\", \"readCountsBinned\" and \"enrichmentBinned\" must be named lists of lists with the number of elements identical to the element readGroups in slot annotation\n")
+            }
+            
+            # test validity and equality of names within counts of regions and bins
+            if (length(object@readCountsBinned[[1]]) > 0) {
+                
+                for (i in seq_len(length(object@annotation$readGroups))) {
+                    if (!testSetEqual(names(object@readCountsUnbinned[[i]]), names(object@readCountsBinned[[i]]))) {
+                        valid = FALSE
+                        msg = c(msg, "Slots \"readCountsUnbinned\" and \"readCountsBinned\" must contain identical names.\n")
+                        
+                    }
+                }
+                
+            }  
+            
+            # Integrity checks for the enrichmentBinned slot
             if (length(object@enrichmentBinned[[1]]) > 0) {
-                testSetEqual(names(object@annotation$files), names(object@enrichmentBinned[[readGroup]])) 
-            }
+                
+                for (i in seq_len(length(object@annotation$readGroups))) {
+                    for (j in names(object@annotation$files)) {
+                        
+                        # Skip input files, enrichment has only been calculated for the signal files
+                        if (object@annotation$files[[j]]$type == "input") {
+                            next
+                        }
+                        
+                        if (!j %in% names(object@enrichmentBinned[[i]])) {
+                            valid = FALSE
+                            msg = c(msg, "Could not find element ", j, " in slot \"enrichmentBinned\".\n")
+                            
+                        }
+                        
+                        
+                    } # end all files
+  
+                } # end all read groups
+                
+            }  # end if enrichment slot not empty
         }
-        
-        if (!testList(object@readCountsUnbinned, any.missing = FALSE, len = length(object@annotation$readGroups), types = "list") |
-            !testList(object@readCountsBinned,   any.missing = FALSE, len = length(object@annotation$readGroups), types = "list") |
-            !testList(object@enrichmentBinned,       any.missing = FALSE, len = length(object@annotation$readGroups), types = "list") |
-            !testSetEqual(object@annotation$readGroups, names(object@readCountsUnbinned)) | 
-            !testSetEqual(object@annotation$readGroups, names(object@readCountsBinned))    |
-            !testSetEqual(object@annotation$readGroups, names(object@enrichmentBinned))     
-        ) {
-            valid = FALSE
-            msg = c(msg, "Slots \"readCountsUnbinned\", \"readCountsBinned\" and \"enrichmentBinned\" must be named lists of lists with the number of elements identical to the element readGroups in slot annotation\n")
-        }
-        
-        # test validity and equality of names within counts of regions and bins
-        if (length(object@readCountsBinned[[1]]) > 0) {
-            
-            for (i in seq_len(length(object@annotation$readGroups))) {
-                if (!testSetEqual(names(object@readCountsUnbinned[[i]]), names(object@readCountsBinned[[i]]))) {
-                    valid = FALSE
-                    msg = c(msg, "Slots \"readCountsUnbinned\" and \"readCountsBinned\" must contain identical names.\n")
-                    
-                }
-            }
-            
-        }  
-        
-        if (length(object@enrichmentBinned[[1]]) > 0) {
-            
-            for (i in seq_len(length(object@annotation$readGroups))) {
-                if (!testSetEqual(names(object@readCountsUnbinned[[i]]), names(object@enrichmentBinned[[i]]))) {
-                    valid = FALSE
-                    msg = c(msg, "Slots \"readCountsUnbinned\" and \"enrichmentBinned\" must contain identical names.\n")
-                    
-                }
-            }
-            
-        }  
         
         nRows = length(object@annotation$regions)
         nCols = length(object@annotation$bins)
         
         
         anyMatrixValueMissingAllowed = FALSE
-        if (object@internal$isAllelicRatio) {
+        if (object@internal$isAllelicRatio | object@config$normByInput) {
             anyMatrixValueMissingAllowed = TRUE
         } 
         
-        # Test dimensions and matrix of all elements
+        # Test dimensions and matrix of all elements in readCountsUnbinned and readCountsBinned
         for (i in seq_len(length(object@annotation$readGroups))) {
             
-            for (j in seq_len(length(object@annotation$files))) {
+            for (j in names(object@annotation$files)) {
+
+                # Skip check under certain conditions due to memory saving
+                if (!object@config$keepAllReadCounts & object@config$normByInput) {
+                    
+                    next
+                }
                 
                 # Test slot readCountsUnbinned
                 if (!testVector(object@readCountsUnbinned[[i]][[j]], strict = TRUE, any.missing = anyMatrixValueMissingAllowed, len = nRows)) {
@@ -999,7 +1059,7 @@ setMethod("show",
                 }
                 
                 if (!object@internal$isAllelicRatio) {
-                    if (!testIntegerish(object@readCountsUnbinned[[i]][[j]], lower = 0, any.missing = FALSE, len = nRows)) {
+                    if (!testNumeric(object@readCountsUnbinned[[i]][[j]], lower = 0, any.missing = FALSE, len = nRows)) {
                         valid = FALSE
                         msg = c(msg, paste0("Slot \"readCountsUnbinned\" must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))               
                     }
@@ -1010,51 +1070,62 @@ setMethod("show",
                     }
                 }
 
-                
-                # Test slot readCountsBinned         
-                if (!testMatrix(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, nrows = nRows, ncols = nCols)) {
-                    valid = FALSE
-                    msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
-                }
-                
-                if (!object@internal$isAllelicRatio) {
-                    if (!testIntegerish(object@readCountsBinned[[i]][[j]], lower = 0, any.missing = FALSE)) {
+                if (!object@config$onlyPrepareForDatasetCorrelation)  {
+                    # Test slot readCountsBinned         
+                    if (!testMatrix(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, nrows = nRows, ncols = nCols)) {
                         valid = FALSE
-                        msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))              
+                        msg = c(msg, paste0("Slot \"readCountsBinned\" 1 must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
                     }
-                } else {
-                    if (!testNumeric(object@readCountsBinned[[i]][[j]], lower = 0, upper = 1, any.missing = TRUE)) {
-                        valid = FALSE
-                        msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
+                    
+                    if (!object@internal$isAllelicRatio) {
+                        
+                        if (object@internal$countType == "readCountsRaw") {
+                            if (!testIntegerish(object@readCountsBinned[[i]][[j]], lower = 0, any.missing = FALSE)) {
+                                valid = FALSE
+                                msg = c(msg, paste0("Slot \"readCountsBinned\" 2 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))              
+                            }
+                        } else {
+                            if (!testNumeric(object@readCountsBinned[[i]][[j]], lower = 0, any.missing = TRUE)) {
+                                valid = FALSE
+                                msg = c(msg, paste0("Slot \"readCountsBinned\" 3 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
+                            }
+                        }
+                        
+                    } else {
+                        
+                        if (!testNumeric(object@readCountsBinned[[i]][[j]], lower = 0, upper = 1, any.missing = TRUE)) {
+                            valid = FALSE
+                            msg = c(msg, paste0("Slot \"readCountsBinned\" 3 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
+                        }
                     }
-                }
+ 
+                    
+                } # end if prepare only for correlation
                 
+            } # end all files
+            
+
+            # Test slot enrichmentBinned
+            if (object@config$normByInput) {
                 
-                # Test slot enrichmentBinned
-                if (length(object@enrichmentBinned[[1]]) > 0) {
+                for (j in names(object@annotation$files)) {
+                
+                    # Skip input files, enrichment has only been calculated for the signal files
+                    if (object@annotation$files[[j]]$type == "input") {
+                        next
+                    }
                     
                     if (!testMatrix(object@enrichmentBinned[[i]][[j]], any.missing =  anyMatrixValueMissingAllowed, nrows = nRows, ncols = nCols)) {
                         valid = FALSE
                         msg = c(msg, paste0("Slot \"enrichmentBinned\" must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
                     }
                     
-                    if (!object@internal$isAllelicRatio) {
-                        if (!testIntegerish(object@enrichmentBinned[[i]][[j]], lower = 0, any.missing = FALSE)) {
-                            valid = FALSE
-                            msg = c(msg, paste0("Slot \"enrichmentBinned\" must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
-                        }
-                    } else {
-                        if (!testNumeric(object@enrichmentBinned[[i]][[j]], lower = 0, upper = 1, any.missing = TRUE)) {
-                            valid = FALSE
-                            msg = c(msg, paste0("Slot \"enrichmentBinned\" must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
-                        }
-                    }
-                    
-                    
                 }
             }
             
-        }
+            
+            
+        } # end all read groups
         
     }
     

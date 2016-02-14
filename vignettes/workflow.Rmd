@@ -1,5 +1,5 @@
 ---
-title: "*SNPhood* example workflow"
+title: "Workflow example"
 author: "Christian Arnold, Pooja Bhat, Judith Zaugg"
 date: "`r BiocStyle::doc_date()`"
 package: "`r BiocStyle::pkg_ver('SNPhood')`"
@@ -10,14 +10,14 @@ vignette: >
   %\VignetteIndexEntry{*SNPhood* example workflow}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-output: 
+output:
   BiocStyle::html_document
 ---
 
 # Example Workflow
-<a name="section1"></a> 
+<a name="section1"></a>
 
-In the following example, you will use data from the *SNPhoodData* package to address the question how many of the previously identified H3K27ac quantitative trait loci (QTLs) for individuals from the Yoruban (YRI) population [1] show allele-specific signal in individuals of European origin (CEU). 
+In the following example, you will use data from the *SNPhoodData* package to address the question how many of the previously identified H3K27ac quantitative trait loci (QTLs) for individuals from the Yoruban (YRI) population [1] show allele-specific signal in individuals of European origin (CEU).
 
 
 ```{r <knitr, echo=FALSE, message=FALSE, results="hide"}
@@ -57,10 +57,10 @@ The first two are required to run a *SNPhood* analysis, genotype files are optio
 
 ## Setting up *SNPhood*
 
-To set up a *SNPhood* analysis, you first need to create a named list that contains all parameters needed in a *SNPhood* analysis. This can be done by calling the function *getDefaultParameterList*, which generates a default list of parameters. It takes only one (optional) argument, which is path to the user-defined regions file:
+To set up a *SNPhood* analysis, you first need to create a named list that contains all parameters needed in a *SNPhood* analysis. This can be done by calling the function *getDefaultParameterList*, which generates a default list of parameters. It takes up to two (optional) arguments, which is 1) the path to the user-defined regions file and 2) whether or not the data are paired-end:
 
 ```{r getParameters, echo=TRUE}
-(par.l = getDefaultParameterList(path_userRegions = fileUserRegions))
+(par.l = getDefaultParameterList(path_userRegions = fileUserRegions, isPairedEndData = TRUE))
 ```
 
 In many cases the default returned parameter values are a reasonable choice. However, **always check the validity and usefulness of the parameters before starting an analysis** to avoid unreasonable results.
@@ -69,7 +69,12 @@ In this example the default value for most parameters is a reasonable choice: th
 
 There are a few parameters that we have to adjust:
 First, we want to pool datasets because there are two replicates for each individual, and combining the datasets will give us more power, for example to detect allelic biases (parameter *poolDatasets*). You also have to carefully check if the start positions in the user regions file are 0-based or 1-based because a shift of one base pair will result in non-sensical results for the genotype distribution of the hQTLs that are determined automatically during the analysis. In this case, start coordinates are 1-based, which is also the default for the parameter *zeroBasedCoordinates*. Our the data are mapped allele-specifically, so perform allele-specific analysis you have to ensure to set the parameter *readGroupSpecific* to TRUE.
-Lastly, we adjust the size of each bin within the region and select a smaller value than the default one (*binSize* = 25 instead of 50). 
+
+*SNPhood* offers a powerful and intuitive way of controlling which reads are considered valid when importing BAM files by means of the various flags that exist (see https://samtools.github.io/hts-specs/SAMv1.pdf), in complete analogy to the `r Biocpkg("Rsamtools")` package. In essence, for each flag,  a corresponding parameter (*readFlag_*) exists that specifies if the flag has to be set (*TRUE*), not set (*FALSE*) or if is irrelevant (*NA*).
+
+We thus have to check the default values for the various *readFlag_* parameters. The default values are for paired-end data, and all of our data here are also paired-end, so we can leave them at their default values. Note that the default values disregard any reads that could be problematic. For example, reads that are marked as duplicates (*readFlag_isDuplicate*), unmapped (either the read itself or its mate - *readFlag_isUnmappedQuery* and *readFlag_hasUnmappedMate*), not a primary read (*readFlag_isNotPrimaryRead*), not (properly) paired (*readFlag_isPaired* and *readFlag_isProperPair*) or fail quality controls (*readFlag_isNotPassingQualityControls*) are discarded. Note that all flags (as specified by the *readFlag* parameters) that are set to NA will be ignored when importing the reads.
+
+Lastly, we adjust the size of each bin within the region and select a smaller value than the default one (*binSize* = 25 instead of 50).
 
 ```{r changeParameters, echo=TRUE}
 # Verify that you do not have zero-based coordinates
@@ -95,13 +100,15 @@ files.df
 
 ## Quality control
 
-Now, you ready for the analysis. Before executing the full pipeline you will first do a quick quality control step to make sure that our datasets do not have any artefacts. For this, you will investigate the correlation of the read counts for our regions among the different datasets. The correlation coefficients should be very high among replicate samples and relatively high among different samples.
+** As stated explicitly in the main vignette, *SNPhood* is not a designated and sufficient tool for ChIP-Seq QC and has never been designed as such. It is important to assess potential biases such as GC, mapping, contamination or other biases beforehand using dedicated tools both within and outside the Bioconductor framework (see the main vignette for designated QC tools).**
+
+However, *SNPhood* does offer some rudimentary QC controls. Before executing the full pipeline, you will therefore first do a quick QC step to make sure that the datasets do not have any artefacts. For this, you will investigate the correlation of the raw read counts for our regions among the different datasets. The correlation coefficients should be very high among replicate samples and relatively high among different samples.
 
 For this, you run the main function *analyzeSNPhood* with a special argument and afterwards employ the function *plotCorrelationDatasets*. Note that you temporarily reset the value of the parameter *poolDatasets* to also check the correlation among the replicates samples.
 
 ```{r qualityTestPrep, echo=TRUE, results="hide"}
 par.l$poolDatasets = FALSE
-SNPhood.o = analyzeSNPhood(par.l, files.df, TRUE, verbose = TRUE)
+SNPhood.o = analyzeSNPhood(par.l, files.df, onlyPrepareForDatasetCorrelation = TRUE, verbose = TRUE)
 ```
 
 You can now run the correlation analysis on the *SNPhood* object and plot it directly (we could also plot it to a PDF file):
@@ -111,7 +118,7 @@ corrResults = results(SNPhood.o, type = "samplesCorrelation")
 mean(corrResults$corTable[lower.tri(corrResults$corTable)])
 ```
 
-The correlation values are indeed very high among the replicate samples and also quite high among the individuals. The mean correlation coefficient among the datasets is 0.91, which is very high (note that only the lower triangle matrix of the correlation matrix is used for this, to not bias the analysis). There does not seem to be a problem with the datasets.
+The correlation values are indeed very high among the replicate samples and also quite high among the individuals. The mean correlation coefficient among the datasets is 0.91, which is very high (note that only the lower triangle matrix of the correlation matrix is used for this, to not bias the analysis). There does not seem to be a problem with the datasets. However, as mentioned repeatedly, this is **not** sufficient for QC and should only be another verification that data quality is high and that biases have been controlled for.
 
 ## Executing the main function
 
@@ -227,13 +234,23 @@ Let's first visualize the number of overlapping reads for the regions before (*p
 
 ```{r visualizeCounts, echo=TRUE, results="hide"}
 
-plotBinCounts(SNPhood.o, region = 2)
-plotBinCounts(SNPhood.o, region = 2, plotGenotypeRatio = TRUE, readGroups = c("paternal","maternal"))
+plotBinCounts(SNPhood.o, regions = 2)
+plotBinCounts(SNPhood.o, regions = 2, plotGenotypeRatio = TRUE, readGroups = c("paternal","maternal"))
+
 
 plotRegionCounts(SNPhood.o, regions = 1:5, plotRegionBoundaries = TRUE, sizePoints = 2, plotRegionLabels = TRUE, mergeReadGroupCounts = TRUE)
 plotRegionCounts(SNPhood.o, regions = NULL, plotChr = "chr21", sizePoints = 2)
 
 ```
+
+We can also create aggregate plots and plot the bin counts for all regions or a subset of regions:
+
+```{r visualizeCounts2, echo=TRUE, results="hide"}
+
+plotBinCounts(SNPhood.o, regions = NULL, readGroups = c("paternal","maternal"))
+
+```
+
 
 
 ## Testing for and visualizing allelic biases
@@ -250,7 +267,9 @@ head(results(SNPhood.o, type = "allelicBias", elements = "pValue")[[1]], 4)
 ```
 
 
-You can now visualize the results to get an overview of the allelic bias in our dataset. You may start by visualizing the results of the allelic bias analysis across regions or a user-defined genomic range such as the full chromosome 21. For this, the function *plotAllelicBiasResultsOverview* is employed, which either plots the minimum or median p-value for each region in the selected genomic region. Note that p-values are uncorrected for multiple testing at this stage, an issue that you can address by calculating a permutation-based background distribution to assess the false discovery rate (FDR). For more details, see the main vignette and the argument *calcBackgroundDistr* of the function *testForAllelicBiases*. 
+You can now visualize the results to get an overview of the allelic bias in our dataset. You may start by visualizing the results of the allelic bias analysis across regions or a user-defined genomic range such as the full chromosome 21. For this, the function *plotAllelicBiasResultsOverview* is employed, which either plots the minimum or median p-value for each region in the selected genomic region. Note that p-values are uncorrected for multiple testing at this stage, an issue that you can address by calculating a permutation-based background distribution to assess the false discovery rate (FDR). For more details, see in particular the main vignette and the argument *calcBackgroundDistr* of the function *testForAllelicBiases*.
+
+TODO: Change text and include permutation-based procedures here
 
 ```{r allelicBias2, echo=TRUE}
 plotAllelicBiasResultsOverview(SNPhood.o, regions = NULL, plotChr = "chr21", signThreshold = 0.05, pValueSummary = "min")
@@ -281,7 +300,7 @@ You can also plot only a subset of the clusters to remove clusters with invarian
 SNPhood.o = plotAndClusterMatrix(SNPhood.o, readGroup = "paternal", nClustersVec = 5, dataset = 1, clustersToPlot = 2:5, verbose = FALSE)
 ```
 
-As you can see, most of the regions have now been removed because they belonged to cluster 1. 
+As you can see, most of the regions have now been removed because they belonged to cluster 1.
 
 To summarize the cluster results and to more easily detect the patterns, you can also calculate the average enrichment across bins per cluster using the function *plotClusterAverage*. Note that this function returns the plots only:
 
@@ -296,7 +315,7 @@ The warning can be ignored here, it simply informs us that multiple plots have b
 Next you can integrate the genotype from external sources for our regions. For this, you first create a data frame to specify which datasets to integrate genotypes with, the path to the VCF file that provides the genotypes, and the name of the column in the VCF file that corresponds to the dataset.
 
 ```{r associategenotype, echo=TRUE}
-(mapping = genotypeMapping = data.frame(samples = annotationDatasets(SNPhood.o), 
+(mapping = genotypeMapping = data.frame(samples = annotationDatasets(SNPhood.o),
                                        genotypeFile = rep(fileGenotypes, 2),
                                        sampleName = c("NA10847", "NA12890")
                              ))
@@ -322,7 +341,7 @@ SNPhood_merged.o = plotAndCalculateWeakAndStrongGenotype(SNPhood_merged.o, norma
 
 The first plot shows the results for the strong genotype, the second one for the weak genotype.
 
-Note that you now have two *SNPhood* objects in your workspace: One without and one with merged read groups. Because merging read groups is irreversible (see ?mergeReadGroups), we keep both objects in the workspace. 
+Note that you now have two *SNPhood* objects in your workspace: One without and one with merged read groups. Because merging read groups is irreversible (see ?mergeReadGroups), we keep both objects in the workspace.
 
 
 You can now combine clustering and genotype one more time and perform the clustering only on the signal averaged across all high-genotype individuals at each SNP to increase the signal to noise ratio (analogous to the analysis in Figure 6 in Grubert et al. [1]):
@@ -331,20 +350,19 @@ You can now combine clustering and genotype one more time and perform the cluste
 p = plotGenotypesPerCluster(SNPhood_merged.o, printPlot = FALSE, printBinLabels = TRUE)
 p[[1]]
 ```
- 
+
 ## How to continue?
-From here on, possibilities are endless, and you can further investigate patterns and trends in the data! We hope that the *SNPhood* package is useful for your research and encourage you to contact us if you have any question or feature request! 
+From here on, possibilities are endless, and you can further investigate patterns and trends in the data! We hope that the *SNPhood* package is useful for your research and encourage you to contact us if you have any question or feature request!
 
 
 # Bug Reports, Feature Requests and Contact Information
-<a name="section2"></a> 
+<a name="section2"></a>
 
 We value all the feedback that we receive and will try to reply in a timely manner.
 
 Please report any bug that you encounter as well as any feature request that you may have to <a href="mailto:SNPhood@gmail.com?Subject=SNPhood package" target="_top">SNPhood@gmail.com</a>.
 
 # References
-<a name="section3"></a> 
+<a name="section3"></a>
 
 [1] Grubert, F., Zaugg, J. B., Kasowski, M., Ursu, O., Spacek, D. V., Martin, A. R., ... & Snyder, M. (2015). Genetic Control of Chromatin States in Humans Involves Local and Distal Chromosomal Interactions. Cell, 162(5), 1051-1065.
-
