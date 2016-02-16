@@ -1226,6 +1226,23 @@
     endTime  <-  Sys.time()
     if (verbose) message(" Execution time: ", round(endTime - startTime, 1), " ", units(endTime - startTime))
 }
+
+.getMemoryProfile <- function(object, verbose = TRUE) {
+    
+    if (verbose)   message(" |Size of object: ", format(object.size(object), units = "Mb"))
+    
+    if (requireNamespace("pryr", quietly = TRUE)) {
+        
+        if (verbose) {
+            message(" |Total memory used by R according to pryr::mem_used: ", round(as.numeric(pryr::mem_used()) / 1024 / 1024,2), " Mb")
+        }
+    } else {
+        
+        message(" The package pryr is not available, cannot compute memory consumption... ")
+        
+    }
+    
+}
     
     
     # Important: Append the size factors because both signal and input may be used multiple times with other signals and input files, respectively, each of which translates to a different size factor
