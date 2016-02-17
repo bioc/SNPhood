@@ -1,5 +1,5 @@
 ---
-title: "*SNPhood*: Investigate, quantify and visualise the epigenomic neighbourhood of SNPs using NGS data"
+title: "Introduction and Methodological Details"
 author: "Christian Arnold, Pooja Bhat, Judith Zaugg"
 date: "`r doc_date()`"
 package: "`r BiocStyle::pkg_ver('SNPhood')`"
