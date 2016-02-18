@@ -537,6 +537,8 @@ setMethod("show",
               SNPhood.o = object    
               .checkObjectValidity(SNPhood.o)
               
+              SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+              
               cat("Class:", class(SNPhood.o),"\n")
               
               nDatasetsCur = nDatasets(SNPhood.o)
@@ -550,8 +552,10 @@ setMethod("show",
 
               if (SNPhood.o@internal$countType == "enrichment") {
                   type = "Enrichments over input"
+              } else if(SNPhood.o@internal$countType == "readCountsRaw") {
+                  type = "Raw read counts"
               } else {
-                  type = "Read counts"
+                  type = "Normalized read counts"
               }
               cat("Summary:", type, "for", nRegionsCur, "user regions across",nDatasetsCur,"datasets,",nAllelesCur, "read groups and", nBinsCur,"bins\n")
               
@@ -571,6 +575,7 @@ setMethod("show",
                   string = paste0(annotationDatasets(SNPhood.o), collapse = " ")
               }
               cat(" Datasets (",nDatasetsCur,"): ", string, "\n", sep = "")
+              
               
               if (nAllelesCur > 4) {
                   string = paste0(paste0(head(annotationReadGroups(SNPhood.o),2), collapse = " "), " ... ", paste0(tail(annotationReadGroups(SNPhood.o),2), collapse = " "))
@@ -607,6 +612,8 @@ setMethod("show",
               if (length(SNPhood.o@internal$addResultsElementsAdded) > 0) {
                   cat("Stores analyses results for:", paste0(SNPhood.o@internal$addResultsElementsAdded,collapse = ", "),"\n")
               }
+              
+              SNPhood.o@internal$disableObjectIntegrityChecking = FALSE
               
   
           }
@@ -1072,10 +1079,19 @@ setMethod("show",
 
                 if (!object@config$onlyPrepareForDatasetCorrelation)  {
                     # Test slot readCountsBinned         
-                    if (!testMatrix(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, nrows = nRows, ncols = nCols)) {
-                        valid = FALSE
-                        msg = c(msg, paste0("Slot \"readCountsBinned\" 1 must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
+                    if (nCols > 1) {
+                        if (!testMatrix(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, nrows = nRows, ncols = nCols)) {
+                            valid = FALSE
+                            msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
+                        }
+                    } else {
+                        if (!testNumeric(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, len = nRows)) {
+                            valid = FALSE
+                            msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
+                        }
                     }
+                    
+                   
                     
                     if (!object@internal$isAllelicRatio) {
                         

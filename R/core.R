@@ -758,7 +758,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     
     for (alleleCur in names(readOverlaps.l)) {
 
-        nReads = sapply(readOverlaps.l[[alleleCur]][["start"]], length)
+        nReads = sapply(readOverlaps.l[[alleleCur]], function(x) {length(x[["start"]])})
         
         # Assign each read to read group 1 initially
         rnd.l = sapply(1:nRegions(SNPhood.o), function(x) rep(1, nReads[x]))
@@ -769,8 +769,8 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
             rnd.l[[regionCur]][sample(1:nReads[regionCur], floor(nReads[regionCur] / 2), replace = FALSE)] = 2
             
             rndAlleles = names(readOverlaps.l)[rnd.l[[regionCur]]]
-            binStarts = as.numeric(readOverlaps.l[[alleleCur]] [["start"]] [[regionCur]])
-            binEnds   = as.numeric(readOverlaps.l[[alleleCur]]  [["end"]]  [[regionCur]])
+            binStarts = as.numeric(readOverlaps.l[[alleleCur]] [[regionCur]] [["start"]] )
+            binEnds   = as.numeric(readOverlaps.l[[alleleCur]] [[regionCur]] [["end"]]  )
             
             # For each read, increase the randomly assigned allele assignment at the particular bins the read overlaps with
             for (indexRead in seq_len(nReads[regionCur])) {
@@ -1058,9 +1058,13 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     # run length encoding of the length of the reads
     # for each read: start and end bin, only start bin if in one bin
     
+    inputFileSetCounter = 0
     for (inputFileSetCur in unique(files.df$input)) {
         
         start_inputSet = Sys.time()
+        inputFileSetCounter = inputFileSetCounter + 1
+        
+        if (verbose) message("\nPROCESS INPUT FILE SET ", inputFileSetCur, " (", inputFileSetCounter, " of ", length(unique(files.df$input)), ")")
         
         # Identify which rows have this set of input files
         indexRowsInput.vec = which(files.df$input  ==  inputFileSetCur)
@@ -1667,13 +1671,17 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
             for (pThresCur in pValuesToTestBackground) {
                 
                 # Average number of significant results
-                nSim = (length(which(pValuesMinSim < pThresCur)) / nRepetitions)
+                nSim = length(which(pValuesMinSim <= pThresCur)) / nRepetitions
                 
                 # Observed number of real significant results
-                nReal = length(which(pValuesMinReal < pThresCur))
+                nReal = length(which(pValuesMinReal <= pThresCur))
                 
                 # FDR is calculated over all user regions
                 fdr = nSim / (nReal + nSim)
+                
+                if ((nReal + nSim) == 0) {
+                    fdr = 0
+                }
                 
                 resManual.df = rbind(resManual.df, data.frame(pValueThreshold = pThresCur, FDR = fdr, nReal = nReal, nSim = nSim))
             }
@@ -1702,9 +1710,9 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
         
     }
     
-    end.timeFinal  <-  Sys.time()
-    if (verbose) message("\n\nFINISHED SUCCESSFULLY WITH ALLELIC BIAS TEST. TOTAL RUNNING TIME: ", round(end.timeFinal - start.time, 1), " ", units(end.timeFinal - start.time),"\n")
-    
+    if (verbose) message("\n\nFINISHED SUCCESSFULLY WITH ALLELIC BIAS TEST.\n")
+    .printExecutionTime(start.time, verbose = verbose)
+        
     SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     SNPhood.o 
@@ -2443,6 +2451,7 @@ deleteRegions  <-  function(SNPhood.o, regions, verbose = TRUE) {
             # SLOT internal
             if (!testNull(SNPhood.o@internal$readStartPos[[alleleCur]] [[fileCur]])) {
                 SNPhood.o@internal$readStartPos[[alleleCur]] [[fileCur]][regions] = NULL
+                SNPhood.o@internal$readWidth[[alleleCur]] [[fileCur]][regions] = NULL
             }
            
         }
@@ -2546,6 +2555,7 @@ deleteDatasets  <-  function(SNPhood.o, datasets = NULL, verbose = TRUE) {
             # SLOT INTERNAL
             if (!testNull(SNPhood.o@internal$readStartPos[[alleleCur]][[fileCur]])) {
                 SNPhood.o@internal$readStartPos[[alleleCur]][[fileCur]] = NULL
+                SNPhood.o@internal$readWidth[[alleleCur]][[fileCur]] = NULL
             }
             
         }
