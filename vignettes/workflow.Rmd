@@ -7,17 +7,17 @@ abstract: >
   This workflow vignette shows how to use the *SNPhood* package in a real-world example. For this purpose, you will use the *SNPhoodData* package for a more complex analysis to illustrate most of the features from *SNPhood*. Importantly, you will also learn in detail how to work with a *SNPhood* object and what its main functions and properties are. The vignette will be continuously updated whenever new functionality becomes available or when we receive user feedback.
 
 vignette: >
-  %\VignetteIndexEntry{*SNPhood* example workflow}
+  %\VignetteIndexEntry{Workflow example}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-output: 
+output:
   BiocStyle::html_document
 ---
 
 # Example Workflow
-<a name="section1"></a> 
+<a name="section1"></a>
 
-In the following example, you will use data from the *SNPhoodData* package to address the question how many of the previously identified H3K27ac quantitative trait loci (QTLs) for individuals from the Yoruban (YRI) population [1] show allele-specific signal in individuals of European origin (CEU). 
+In the following example, you will use data from the *SNPhoodData* package to address the question how many of the previously identified H3K27ac quantitative trait loci (QTLs) for individuals from the Yoruban (YRI) population [1] show allele-specific signal in individuals of European origin (CEU).
 
 
 ```{r <knitr, echo=FALSE, message=FALSE, results="hide"}
@@ -69,7 +69,7 @@ In this example the default value for most parameters is a reasonable choice: th
 
 There are a few parameters that we have to adjust:
 First, we want to pool datasets because there are two replicates for each individual, and combining the datasets will give us more power, for example to detect allelic biases (parameter *poolDatasets*). You also have to carefully check if the start positions in the user regions file are 0-based or 1-based because a shift of one base pair will result in non-sensical results for the genotype distribution of the hQTLs that are determined automatically during the analysis. In this case, start coordinates are 1-based, which is also the default for the parameter *zeroBasedCoordinates*. Our the data are mapped allele-specifically, so perform allele-specific analysis you have to ensure to set the parameter *readGroupSpecific* to TRUE.
-Lastly, we adjust the size of each bin within the region and select a smaller value than the default one (*binSize* = 25 instead of 50). 
+Lastly, we adjust the size of each bin within the region and select a smaller value than the default one (*binSize* = 25 instead of 50).
 
 ```{r changeParameters, echo=TRUE}
 # Verify that you do not have zero-based coordinates
@@ -250,7 +250,7 @@ head(results(SNPhood.o, type = "allelicBias", elements = "pValue")[[1]], 4)
 ```
 
 
-You can now visualize the results to get an overview of the allelic bias in our dataset. You may start by visualizing the results of the allelic bias analysis across regions or a user-defined genomic range such as the full chromosome 21. For this, the function *plotAllelicBiasResultsOverview* is employed, which either plots the minimum or median p-value for each region in the selected genomic region. Note that p-values are uncorrected for multiple testing at this stage, an issue that you can address by calculating a permutation-based background distribution to assess the false discovery rate (FDR). For more details, see the main vignette and the argument *calcBackgroundDistr* of the function *testForAllelicBiases*. 
+You can now visualize the results to get an overview of the allelic bias in our dataset. You may start by visualizing the results of the allelic bias analysis across regions or a user-defined genomic range such as the full chromosome 21. For this, the function *plotAllelicBiasResultsOverview* is employed, which either plots the minimum or median p-value for each region in the selected genomic region. Note that p-values are uncorrected for multiple testing at this stage, an issue that you can address by calculating a permutation-based background distribution to assess the false discovery rate (FDR). For more details, see the main vignette and the argument *calcBackgroundDistr* of the function *testForAllelicBiases*.
 
 ```{r allelicBias2, echo=TRUE}
 plotAllelicBiasResultsOverview(SNPhood.o, regions = NULL, plotChr = "chr21", signThreshold = 0.05, pValueSummary = "min")
@@ -281,7 +281,7 @@ You can also plot only a subset of the clusters to remove clusters with invarian
 SNPhood.o = plotAndClusterMatrix(SNPhood.o, readGroup = "paternal", nClustersVec = 5, dataset = 1, clustersToPlot = 2:5, verbose = FALSE)
 ```
 
-As you can see, most of the regions have now been removed because they belonged to cluster 1. 
+As you can see, most of the regions have now been removed because they belonged to cluster 1.
 
 To summarize the cluster results and to more easily detect the patterns, you can also calculate the average enrichment across bins per cluster using the function *plotClusterAverage*. Note that this function returns the plots only:
 
@@ -296,7 +296,7 @@ The warning can be ignored here, it simply informs us that multiple plots have b
 Next you can integrate the genotype from external sources for our regions. For this, you first create a data frame to specify which datasets to integrate genotypes with, the path to the VCF file that provides the genotypes, and the name of the column in the VCF file that corresponds to the dataset.
 
 ```{r associategenotype, echo=TRUE}
-(mapping = genotypeMapping = data.frame(samples = annotationDatasets(SNPhood.o), 
+(mapping = genotypeMapping = data.frame(samples = annotationDatasets(SNPhood.o),
                                        genotypeFile = rep(fileGenotypes, 2),
                                        sampleName = c("NA10847", "NA12890")
                              ))
@@ -322,7 +322,7 @@ SNPhood_merged.o = plotAndCalculateWeakAndStrongGenotype(SNPhood_merged.o, norma
 
 The first plot shows the results for the strong genotype, the second one for the weak genotype.
 
-Note that you now have two *SNPhood* objects in your workspace: One without and one with merged read groups. Because merging read groups is irreversible (see ?mergeReadGroups), we keep both objects in the workspace. 
+Note that you now have two *SNPhood* objects in your workspace: One without and one with merged read groups. Because merging read groups is irreversible (see ?mergeReadGroups), we keep both objects in the workspace.
 
 
 You can now combine clustering and genotype one more time and perform the clustering only on the signal averaged across all high-genotype individuals at each SNP to increase the signal to noise ratio (analogous to the analysis in Figure 6 in Grubert et al. [1]):
@@ -331,20 +331,19 @@ You can now combine clustering and genotype one more time and perform the cluste
 p = plotGenotypesPerCluster(SNPhood_merged.o, printPlot = FALSE, printBinLabels = TRUE)
 p[[1]]
 ```
- 
+
 ## How to continue?
-From here on, possibilities are endless, and you can further investigate patterns and trends in the data! We hope that the *SNPhood* package is useful for your research and encourage you to contact us if you have any question or feature request! 
+From here on, possibilities are endless, and you can further investigate patterns and trends in the data! We hope that the *SNPhood* package is useful for your research and encourage you to contact us if you have any question or feature request!
 
 
 # Bug Reports, Feature Requests and Contact Information
-<a name="section2"></a> 
+<a name="section2"></a>
 
 We value all the feedback that we receive and will try to reply in a timely manner.
 
 Please report any bug that you encounter as well as any feature request that you may have to <a href="mailto:SNPhood@gmail.com?Subject=SNPhood package" target="_top">SNPhood@gmail.com</a>.
 
 # References
-<a name="section3"></a> 
+<a name="section3"></a>
 
 [1] Grubert, F., Zaugg, J. B., Kasowski, M., Ursu, O., Spacek, D. V., Martin, A. R., ... & Snyder, M. (2015). Genetic Control of Chromatin States in Humans Involves Local and Distal Chromosomal Interactions. Cell, 162(5), 1051-1065.
-
