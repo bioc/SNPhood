@@ -266,7 +266,14 @@ setMethod("counts", "SNPhood", function(object, type = "binned", readGroup = NUL
     }
     
     if (length(counts.l) == 0) {
-        warning("Returning an empty list. If you asked for counts after binning (type = \"binned\"), you may accidentally set the parameter \"onlyPrepareForDatasetCorrelation\" to TRUE in the main function. In this case, run the function analyzeSNPhood again and set the parameter to FALSE. See also the help pages.")
+        
+        if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
+            warning("Returning an empty list, could not find the requested data in the object. The parameter \"onlyPrepareForDatasetCorrelation\" has been set to TRUE. Rrun the function analyzeSNPhood again and set the parameter to FALSE. See also the help pages.")
+            
+        } else {
+            warning("Returning an empty list, could not find the requested data in the object. Did you ask for the correct type of data? See also the help pages.")
+            
+        }
     }
     
     return(counts.l)

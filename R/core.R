@@ -758,7 +758,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     
     for (alleleCur in names(readOverlaps.l)) {
 
-        nReads = sapply(readOverlaps.l[[alleleCur]], function(x) {length(x[["start"]])})
+        nReads = sapply(readOverlaps.l[[alleleCur]][["start"]], length)
         
         # Assign each read to read group 1 initially
         rnd.l = sapply(1:nRegions(SNPhood.o), function(x) rep(1, nReads[x]))
@@ -769,8 +769,8 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
             rnd.l[[regionCur]][sample(1:nReads[regionCur], floor(nReads[regionCur] / 2), replace = FALSE)] = 2
             
             rndAlleles = names(readOverlaps.l)[rnd.l[[regionCur]]]
-            binStarts = as.numeric(readOverlaps.l[[alleleCur]] [[regionCur]] [["start"]] )
-            binEnds   = as.numeric(readOverlaps.l[[alleleCur]] [[regionCur]] [["end"]]  )
+            binStarts = as.numeric(readOverlaps.l[[alleleCur]] [["start"]] [[regionCur]] )
+            binEnds   = as.numeric(readOverlaps.l[[alleleCur]] [["end"]]   [[regionCur]] )
             
             # For each read, increase the randomly assigned allele assignment at the particular bins the read overlaps with
             for (indexRead in seq_len(nReads[regionCur])) {
