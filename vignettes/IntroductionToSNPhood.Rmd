@@ -32,8 +32,6 @@ output:
 
 To date, thousands of single nucleotide polymorphisms (SNPs) have been found to be associated with complex traits and diseases. However, the vast majority of these disease-associated SNPs lie in the non-coding part of the genome, and are likely to affect regulatory elements, such as enhancers and promoters, rather than the function of a protein. Thus, to understand the molecular mechanisms underlying genetic traits and diseases, it becomes increasingly important to study the effect of a SNP on nearby molecular traits such as chromatin environment or transcription factor (TF) binding. Towards this aim, we developed *SNPhood*, a user-friendly Bioconductor [9] R package to investigate, quantify and visualize the local epigenetic neighborhood of a set of SNPs in terms of chromatin marks, TF binding sites using data from NGS experiments. *SNPhood* comprises a set of easy-to-use functions to extract, normalize and quantify reads for a genomic region, perform data quality checks, normalize read counts using input files, to investigate the binding pattern using unsupervised clustering. In addition, *SNPhood* can be employed for identifying and visualizing allele-specific binding patterns around SNPs using a robust permutation based FDR procedure. The regions around each SNP can be binned in a user-defined fashion to allow for analyses ranging from very broad regions to highly detailed investigation of specific binding shapes. Importantly, *SNPhood* supports the integration with genotype information to investigate and visualize genotype-specific binding patterns.
 
-<!--new -->
-<font color="red">
 
 ## Package scope and limitations
 <a name="section5"></a>
@@ -58,7 +56,7 @@ First, **let's be clear what *SNPhood* is NOT**:
 </figure>
 </div>
 
-</font>
+
 
 
 # Basic Mode of Action
@@ -194,8 +192,6 @@ We explain the supported parameters in more detail in the section <a href="#sect
 
 Note that if you already have your BAM files represented in an object of class *BamFile* or *BamFileList* from the `r Biocpkg("Rsamtools")` package, this can easily be integrated into the *SNPhood* framework. See the help pages of the function *collectFiles* for details.
 
-<!--new -->
-<font color="red">
 
 ## Quality control (QC)
 <a name="section6-4"></a>
@@ -208,7 +204,7 @@ Nevertheless, *SNPhood* offers some rudimentary QC mechanisms that accompany des
 * the user can specifically decide which reads from the input files should be included based on their flags, thereby allowing to exclude reads with poor quality. For more details, see <a href="#section6-6">here</a>.
 * the designated QC function *plotAndCalculateCorrelationDatasets* may be used to identify datasets that are weakly correlated with other datasets given the user-defined regions of interest based on pairwise correlation of the raw read values (i.e., the number of reads that overlap each region of interest). For example, one would usually expect that the correlation coefficients are very high among replicate samples and relatively high among different samples as well if they are of the same cell type. For more details, see also the R help of the function and the workflow vignette.
 
-</font>
+
 
 ## Extending user regions and binning
 <a name="section5-3"></a> 
@@ -257,8 +253,6 @@ Raw read counts among datasets can be misleading and are difficult to compare. T
 1. Normalization using input DNA: this will correct not only across samples but also for the accessibility of a given region and will allow a comparison across regions. This method requires that input DNA has been sequenced deep enough to provide a decent coverage across the entire genome. It is analogous to the input normalization by commonly used peak callers such as MACS2 [7].
 2. Normalization by library size:  this will only correct for library size and thus allow a comparison across libraries. Note that a comparison across regions is not necessarily valid since regions can differ in their accessibility. 
 
-<!--new -->
-<font color="red">
 
 The following figure gives an overview of the two different normalization procedures and how they function:
 
@@ -269,7 +263,7 @@ The following figure gives an overview of the two different normalization proced
 </figure>
 </div>
 
-</font>
+
 
 ### Normalizing using negative controls (e.g. input DNA): 
 
@@ -288,9 +282,6 @@ Specifically, input normalization works as follows. First, read counts between i
 * the average number of input reads per bin **across the full genome** (global control)
 * the average number of input reads per bin **for that particular user region** (local control)
 * the number of input reads for the specific bin
-
-<!--new -->
-<font color="red">
 
 The global average is calculated as follows: First, the total number of reads across the full genome is determined. Because of repetitive features on the chromosomes, the actual mappable genome size, however, is smaller than the full genome size (between ~65% and ~80%, dependent on the actual read length). This so-called  mappable or effective genome size is important to correctly calculate the genome wide average per base and subsequently per bin. The effective genome size is specified by the parameter *effectiveGenomeSizePercentage*. *SNPhood* tries to automatically determine a good proxy for it from the data so the user does not have to worry about setting it correctly. However, there are cases when setting reasonable values for this parameter is mandatory (see parameter description at the end for more details). To do so, we estimate the read length in the BAM file by taking the maximal read length of the first 1000 reads and estimate a reasonable number for the effective genome size given the genome assembly and the read length according to the data for the proportions of unique start sites for nucleotide-space short tag alignments in Koehler et al. (2011), Table 1 [10]. Because these values have been obtained only for a particular genome assembly version for each species (e.g., hg19), we use the same values for other assembly versions of the same species (e.g., hg38). If this approximation is not accurate enough for the user, the parameter can be set manually, as mentioned before. Furthermore, the read length from the table will be taken that is closest to the observed one. For example, for a read length of 80 for hg19, the value for read length 75 (79.3%) will be taken.
 
@@ -323,7 +314,7 @@ The variables are defined as follows:
 * *binSize*: The value of the parameter *binSize* (that is, size of the bins)
 * *readLength*: The read length in base pairs, as determined from the inpit file, see above
 
-</font>
+
 
 The maximum of these three values (after normalization) is then compared to the normalized number of reads per bin in the signal file and an enrichment is calculated. This is similar to the normalization implement in the *MACS2* peak caller [7]; it avoids inflating small read counts from input and corrects local biases caused by DNA accessibility.
 
@@ -352,19 +343,14 @@ After this normalization, read counts are numeric values that reflect the normal
 
 The normalization is done using the `r Biocpkg("DeSeq2")` package by creating a virtual sample and determining size factors for each library that reflect the normalization factor, based on the total number of read counts per user region (i.e., before binning). For more details, see the `r Biocpkg("DeSeq2")` package and Love et al. (2014) [3].
 
-<!--new -->
-<font color="red">
-
 ### Normalization when pooling datasets
 
 As indicated in Figure 9, normalization may happen at different steps. Because *SNPhood* supports multiple datasets to be pooled together to one dataset for both signal and input, multiple normalization steps may be required.
 
-</font>
+
 
 ## Allelic bias tests
 
-<!--new -->
-<font color="red">
 
 The function *testForAllelicBiases*  performs a statistical test to test for allelic biases given the read counts of two read groups (e.g., maternal vs. paternal). The prerequisite for this type of analysis is that the reads have been reliably mapped to the paternal and maternal genome (e.g. as described in Kasowski et al. [4]).
 
@@ -374,7 +360,8 @@ To assess the significance of each region we implemented a permutation-based pro
 
 As an output, the raw p-values (to be used as "scores") from the binomial tests, estimates for the allelic fraction and corresponding confidence intervals are reported for each bin across all user regions. In addition, the corresponding FDR values for a user-defined set of p-values is also given that may then be used to select the regions based on a given FDR threshold.
 
-</font>
+SNPhood has originally been designed to analyze read profiles in a bin-wise fashion. **Therefore, currently, the FDR calculation can only be performed if the number of bins per region is at least 5. For analyses with less than 5 bins, the raw p-values have to be corrected manually, for example with standard multiple testing corrections**. Note, however, that potential overdispersion in the count data is not accounted for in such a case. We are currently thinking about a procedure that is more independent on the number of bins.
+
 
 ## Genotype integration
 
@@ -403,8 +390,6 @@ Several plotting functions are available to investigate the clusters, see the he
 An additional feature that might be useful when performing clustering on several individuals is to group individuals for each SNP according to their genotype, which we divide into strong and weak genotypes. They are determined based on the signal obtained for the different genotypes (see help pages of the function *calculateWeakAndStrongGenotype*). One can then perform the clustering only on the signal averaged across all high-genotype individuals at each SNP to increase the signal to noise ratio (analogous to the analysis in Figure 6 in Grubert et al. [6]).
 
 
-<!--new -->
-<font color="red">
 
 # Memory footprint and execution time, feasibility with large datasets
 
@@ -439,7 +424,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 * If you use replicates, keep the default value of *keepAllReadCounts* (FALSE) unless you need individual read counts for each replicate or treat all files as separate individuals altogether.
 * Large analyses with >50,000 user regions, however, may occupy a lot of memory and CPU time, but this again depends on a few parameters, primarily the number of reads that overlap with the user regions. It might be a better idea to run multiple separate analyses instead. If you have questions regarding a big analysis you want to do, do not hesitate contacting us.
 
-</font>
+
 
 # Parameters
 <a name="section6"></a> 
@@ -666,9 +651,6 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 *Default value*:  hg19
 
-<!--new -->
-<font color="red">
-
 **effectiveGenomeSizePercentage**
 
 *Description*:  The proportion of the genome that resembles the effective or mappable genome size, given the specific genome assembly version and the read length. If set to -1, *SNPhood* tries to automatically determine a reasonable value given the data from Koehler et al. (2011), Table 1 [10]. Currently, this automatic determination is only possible for the following genome assemblies: hg38, hg19, hg18, mm10, mm9, and dm3. For other genome assemblies or user-defined and potentially more precise values, the parameter has to or can be set manually. For more details, see  <a href="#section6-7">here</a>.
@@ -677,7 +659,7 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 *Default value*:  -1
 
-</font>
+
 
 **headerLine**
 
