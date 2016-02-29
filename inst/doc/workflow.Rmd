@@ -57,10 +57,10 @@ The first two are required to run a *SNPhood* analysis, genotype files are optio
 
 ## Setting up *SNPhood*
 
-To set up a *SNPhood* analysis, you first need to create a named list that contains all parameters needed in a *SNPhood* analysis. This can be done by calling the function *getDefaultParameterList*, which generates a default list of parameters. It takes up to two (optional) arguments, which is 1) the path to the user-defined regions file and 2) whether or not the data are paired-end:
+To set up a *SNPhood* analysis, you first need to create a named list that contains all parameters needed in a *SNPhood* analysis. This can be done by calling the function *getDefaultParameterList*, which generates a default list of parameters. It takes only one (optional) argument, which is path to the user-defined regions file:
 
 ```{r getParameters, echo=TRUE}
-(par.l = getDefaultParameterList(path_userRegions = fileUserRegions, isPairedEndData = TRUE))
+(par.l = getDefaultParameterList(path_userRegions = fileUserRegions))
 ```
 
 In many cases the default returned parameter values are a reasonable choice. However, **always check the validity and usefulness of the parameters before starting an analysis** to avoid unreasonable results.
@@ -69,11 +69,6 @@ In this example the default value for most parameters is a reasonable choice: th
 
 There are a few parameters that we have to adjust:
 First, we want to pool datasets because there are two replicates for each individual, and combining the datasets will give us more power, for example to detect allelic biases (parameter *poolDatasets*). You also have to carefully check if the start positions in the user regions file are 0-based or 1-based because a shift of one base pair will result in non-sensical results for the genotype distribution of the hQTLs that are determined automatically during the analysis. In this case, start coordinates are 1-based, which is also the default for the parameter *zeroBasedCoordinates*. Our the data are mapped allele-specifically, so perform allele-specific analysis you have to ensure to set the parameter *readGroupSpecific* to TRUE.
-
-*SNPhood* offers a powerful and intuitive way of controlling which reads are considered valid when importing BAM files by means of the various flags that exist (see https://samtools.github.io/hts-specs/SAMv1.pdf), in complete analogy to the `r Biocpkg("Rsamtools")` package. In essence, for each flag,  a corresponding parameter (*readFlag_*) exists that specifies if the flag has to be set (*TRUE*), not set (*FALSE*) or if is irrelevant (*NA*).
-
-We thus have to check the default values for the various *readFlag_* parameters. The default values are for paired-end data, and all of our data here are also paired-end, so we can leave them at their default values. Note that the default values disregard any reads that could be problematic. For example, reads that are marked as duplicates (*readFlag_isDuplicate*), unmapped (either the read itself or its mate - *readFlag_isUnmappedQuery* and *readFlag_hasUnmappedMate*), not a primary read (*readFlag_isNotPrimaryRead*), not (properly) paired (*readFlag_isPaired* and *readFlag_isProperPair*) or fail quality controls (*readFlag_isNotPassingQualityControls*) are discarded. Note that all flags (as specified by the *readFlag* parameters) that are set to NA will be ignored when importing the reads.
-
 Lastly, we adjust the size of each bin within the region and select a smaller value than the default one (*binSize* = 25 instead of 50).
 
 ```{r changeParameters, echo=TRUE}
@@ -100,15 +95,13 @@ files.df
 
 ## Quality control
 
-** As stated explicitly in the main vignette, *SNPhood* is not a designated and sufficient tool for ChIP-Seq QC and has never been designed as such. It is important to assess potential biases such as GC, mapping, contamination or other biases beforehand using dedicated tools both within and outside the Bioconductor framework (see the main vignette for designated QC tools).**
-
-However, *SNPhood* does offer some rudimentary QC controls. Before executing the full pipeline, you will therefore first do a quick QC step to make sure that the datasets do not have any artefacts. For this, you will investigate the correlation of the raw read counts for our regions among the different datasets. The correlation coefficients should be very high among replicate samples and relatively high among different samples.
+Now, you ready for the analysis. Before executing the full pipeline you will first do a quick quality control step to make sure that our datasets do not have any artefacts. For this, you will investigate the correlation of the read counts for our regions among the different datasets. The correlation coefficients should be very high among replicate samples and relatively high among different samples.
 
 For this, you run the main function *analyzeSNPhood* with a special argument and afterwards employ the function *plotCorrelationDatasets*. Note that you temporarily reset the value of the parameter *poolDatasets* to also check the correlation among the replicates samples.
 
 ```{r qualityTestPrep, echo=TRUE, results="hide"}
 par.l$poolDatasets = FALSE
-SNPhood.o = analyzeSNPhood(par.l, files.df, onlyPrepareForDatasetCorrelation = TRUE, verbose = TRUE)
+SNPhood.o = analyzeSNPhood(par.l, files.df, TRUE, verbose = TRUE)
 ```
 
 You can now run the correlation analysis on the *SNPhood* object and plot it directly (we could also plot it to a PDF file):
@@ -118,7 +111,7 @@ corrResults = results(SNPhood.o, type = "samplesCorrelation")
 mean(corrResults$corTable[lower.tri(corrResults$corTable)])
 ```
 
-The correlation values are indeed very high among the replicate samples and also quite high among the individuals. The mean correlation coefficient among the datasets is 0.91, which is very high (note that only the lower triangle matrix of the correlation matrix is used for this, to not bias the analysis). There does not seem to be a problem with the datasets. However, as mentioned repeatedly, this is **not** sufficient for QC and should only be another verification that data quality is high and that biases have been controlled for.
+The correlation values are indeed very high among the replicate samples and also quite high among the individuals. The mean correlation coefficient among the datasets is 0.91, which is very high (note that only the lower triangle matrix of the correlation matrix is used for this, to not bias the analysis). There does not seem to be a problem with the datasets.
 
 ## Executing the main function
 
@@ -234,66 +227,41 @@ Let's first visualize the number of overlapping reads for the regions before (*p
 
 ```{r visualizeCounts, echo=TRUE, results="hide"}
 
-plotBinCounts(SNPhood.o, regions = 2)
-plotBinCounts(SNPhood.o, regions = 2, plotGenotypeRatio = TRUE, readGroups = c("paternal","maternal"))
-
+plotBinCounts(SNPhood.o, region = 2)
+plotBinCounts(SNPhood.o, region = 2, plotGenotypeRatio = TRUE, readGroups = c("paternal","maternal"))
 
 plotRegionCounts(SNPhood.o, regions = 1:5, plotRegionBoundaries = TRUE, sizePoints = 2, plotRegionLabels = TRUE, mergeReadGroupCounts = TRUE)
 plotRegionCounts(SNPhood.o, regions = NULL, plotChr = "chr21", sizePoints = 2)
 
 ```
 
-We can also create aggregate plots and plot the bin counts for all regions or a subset of regions:
-
-```{r visualizeCounts2, echo=TRUE, results="hide"}
-
-plotBinCounts(SNPhood.o, regions = NULL, readGroups = c("paternal","maternal"))
-
-```
-
-
 
 ## Testing for and visualizing allelic biases
-
-We now test for allelic biases. To determine the significance across regions, one can select the lowest p-value for each region. This ensures to select the bin with the most power (which often has the highest number of reads) to detect allelic bias. However, the tests for bins are not independent from one another and the p-values are not adjusted for multiple testing. We therefore implemented a permutation-based procedure to control the false discovery rate (FDR). This option is also enabled by default (parameters *calcBackgroundDistr* and *nRepetitions*).
 
 ```{r allelicBias, echo=TRUE}
 
 # Run the analysis, perform no time-consuming background calculation for now
-SNPhood.o = testForAllelicBiases(SNPhood.o, readGroups = c("paternal", "maternal"), calcBackgroundDistr = TRUE, nRepetitions = 100, verbose = FALSE)
+SNPhood.o = testForAllelicBiases(SNPhood.o, readGroups = c("paternal", "maternal"), verbose = FALSE)
 
 # Extract the results of the analysis, again using the results function
 names(results(SNPhood.o, type = "allelicBias"))
 head(results(SNPhood.o, type = "allelicBias", elements = "pValue")[[1]], 4)
 
-# Extract the results of the FDR calculation for the first dataset
-FDR_dataset1 = results(SNPhood.o, type = "allelicBias", elements = "FDR_results")[[1]]
-head(FDR_dataset1, 20)
-
-# Extract the results of the FDR calculation for the second dataset
-FDR_dataset2 = results(SNPhood.o, type = "allelicBias", elements = "FDR_results")[[2]]
-head(FDR_dataset2, 20)
-
-maxFDR = 0.1
-signThresholdFDR_dataset1 = FDR_dataset1$pValueThreshold[max(which(FDR_dataset1$FDR < maxFDR))]
-signThresholdFDR_dataset2 = FDR_dataset2$pValueThreshold[max(which(FDR_dataset1$FDR < maxFDR))]
-
 ```
 
-From the FDR results we see that for both datasets, the FDR is below 10% for p-values < 0.01. For this analysis, 10% is an acceptable number, so we will use this as significance threshold for the upcoming visualization functions.
 
-You can now visualize the results to get an overview of the allelic bias in our dataset. You may start by visualizing the results of the allelic bias analysis across regions or a user-defined genomic range such as the full chromosome 21. For this, the function *plotAllelicBiasResultsOverview* is employed, which either plots the minimum or median p-value for each region in the selected genomic region. 
+You can now visualize the results to get an overview of the allelic bias in our dataset. You may start by visualizing the results of the allelic bias analysis across regions or a user-defined genomic range such as the full chromosome 21. For this, the function *plotAllelicBiasResultsOverview* is employed, which either plots the minimum or median p-value for each region in the selected genomic region. Note that p-values are uncorrected for multiple testing at this stage, an issue that you can address by calculating a permutation-based background distribution to assess the false discovery rate (FDR). For more details, see the main vignette and the argument *calcBackgroundDistr* of the function *testForAllelicBiases*.
 
 ```{r allelicBias2, echo=TRUE}
-plotAllelicBiasResultsOverview(SNPhood.o, regions = NULL, plotChr = "chr21", signThreshold = 0.01, pValueSummary = "min")
+plotAllelicBiasResultsOverview(SNPhood.o, regions = NULL, plotChr = "chr21", signThreshold = 0.05, pValueSummary = "min")
 plotAllelicBiasResultsOverview(SNPhood.o, regions = 3:5, plotRegionBoundaries = TRUE, plotRegionLabels = TRUE, signThreshold = 0.01, pValueSummary = "min")
 ```
 
 The first plot indicates that a considerable amount of regions seems to show an allelic bias. You can then look at the results for the allelic bias analysis in detail for a specific dataset and region with the function *plotAllelicBiasResults*:
 
 ```{r allelicBias3, echo=TRUE, fig.height=7}
-plots = plotAllelicBiasResults(SNPhood.o, region = 2, signThreshold = 0.01, readGroupColors = c("blue", "red", "gray"))
-plots = plotAllelicBiasResults(SNPhood.o, region = 7, signThreshold = 0.01, readGroupColors = c("blue", "red", "gray"))
+plots = plotAllelicBiasResults(SNPhood.o, region = 2, signThreshold = 0.05, readGroupColors = c("blue", "red", "gray"))
+plots = plotAllelicBiasResults(SNPhood.o, region = 7, signThreshold = 0.05, readGroupColors = c("blue", "red", "gray"))
 ```
 
 While the first plot shows an example of a region for which no allelic bias can be found, the second one shows significant allelic bias across many bins. In this case, the allelic bias might be caused by the genotype, as paternal and maternal reads have different genotypes (see the legend, A versus C).

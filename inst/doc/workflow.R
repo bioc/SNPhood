@@ -17,7 +17,7 @@ fileUserRegions = files[grep(".txt", files)]
 fileGenotypes   = files[grep("genotypes", files)]
 
 ## ----getParameters, echo=TRUE--------------------------------------------
-(par.l = getDefaultParameterList(path_userRegions = fileUserRegions, isPairedEndData = TRUE))
+(par.l = getDefaultParameterList(path_userRegions = fileUserRegions))
 
 ## ----changeParameters, echo=TRUE-----------------------------------------
 # Verify that you do not have zero-based coordinates
@@ -36,7 +36,7 @@ files.df
 
 ## ----qualityTestPrep, echo=TRUE, results="hide"--------------------------
 par.l$poolDatasets = FALSE
-SNPhood.o = analyzeSNPhood(par.l, files.df, onlyPrepareForDatasetCorrelation = TRUE, verbose = TRUE)
+SNPhood.o = analyzeSNPhood(par.l, files.df, TRUE, verbose = TRUE)
 
 ## ----qualityTest, echo=TRUE----------------------------------------------
 SNPhood.o = plotAndCalculateCorrelationDatasets(SNPhood.o, fileToPlot = NULL)
@@ -138,48 +138,30 @@ annotationReadGroups(SNPhood_merged.o)
 
 ## ----visualizeCounts, echo=TRUE, results="hide"--------------------------
 
-plotBinCounts(SNPhood.o, regions = 2)
-plotBinCounts(SNPhood.o, regions = 2, plotGenotypeRatio = TRUE, readGroups = c("paternal","maternal"))
-
+plotBinCounts(SNPhood.o, region = 2)
+plotBinCounts(SNPhood.o, region = 2, plotGenotypeRatio = TRUE, readGroups = c("paternal","maternal"))
 
 plotRegionCounts(SNPhood.o, regions = 1:5, plotRegionBoundaries = TRUE, sizePoints = 2, plotRegionLabels = TRUE, mergeReadGroupCounts = TRUE)
 plotRegionCounts(SNPhood.o, regions = NULL, plotChr = "chr21", sizePoints = 2)
 
 
-## ----visualizeCounts2, echo=TRUE, results="hide"-------------------------
-
-plotBinCounts(SNPhood.o, regions = NULL, readGroups = c("paternal","maternal"))
-
-
 ## ----allelicBias, echo=TRUE----------------------------------------------
 
 # Run the analysis, perform no time-consuming background calculation for now
-SNPhood.o = testForAllelicBiases(SNPhood.o, readGroups = c("paternal", "maternal"), calcBackgroundDistr = TRUE, nRepetitions = 100, verbose = FALSE)
+SNPhood.o = testForAllelicBiases(SNPhood.o, readGroups = c("paternal", "maternal"), verbose = FALSE)
 
 # Extract the results of the analysis, again using the results function
 names(results(SNPhood.o, type = "allelicBias"))
 head(results(SNPhood.o, type = "allelicBias", elements = "pValue")[[1]], 4)
 
-# Extract the results of the FDR calculation for the first dataset
-FDR_dataset1 = results(SNPhood.o, type = "allelicBias", elements = "FDR_results")[[1]]
-head(FDR_dataset1, 20)
-
-# Extract the results of the FDR calculation for the second dataset
-FDR_dataset2 = results(SNPhood.o, type = "allelicBias", elements = "FDR_results")[[2]]
-head(FDR_dataset2, 20)
-
-maxFDR = 0.1
-signThresholdFDR_dataset1 = FDR_dataset1$pValueThreshold[max(which(FDR_dataset1$FDR < maxFDR))]
-signThresholdFDR_dataset2 = FDR_dataset2$pValueThreshold[max(which(FDR_dataset1$FDR < maxFDR))]
-
 
 ## ----allelicBias2, echo=TRUE---------------------------------------------
-plotAllelicBiasResultsOverview(SNPhood.o, regions = NULL, plotChr = "chr21", signThreshold = 0.01, pValueSummary = "min")
+plotAllelicBiasResultsOverview(SNPhood.o, regions = NULL, plotChr = "chr21", signThreshold = 0.05, pValueSummary = "min")
 plotAllelicBiasResultsOverview(SNPhood.o, regions = 3:5, plotRegionBoundaries = TRUE, plotRegionLabels = TRUE, signThreshold = 0.01, pValueSummary = "min")
 
 ## ----allelicBias3, echo=TRUE, fig.height=7-------------------------------
-plots = plotAllelicBiasResults(SNPhood.o, region = 2, signThreshold = 0.01, readGroupColors = c("blue", "red", "gray"))
-plots = plotAllelicBiasResults(SNPhood.o, region = 7, signThreshold = 0.01, readGroupColors = c("blue", "red", "gray"))
+plots = plotAllelicBiasResults(SNPhood.o, region = 2, signThreshold = 0.05, readGroupColors = c("blue", "red", "gray"))
+plots = plotAllelicBiasResults(SNPhood.o, region = 7, signThreshold = 0.05, readGroupColors = c("blue", "red", "gray"))
 
 ## ----clusterCountMatrix, echo=TRUE---------------------------------------
 SNPhood.o = plotAndClusterMatrix(SNPhood.o, readGroup = "paternal", nClustersVec = 2, dataset = 1, verbose = FALSE)

@@ -4,16 +4,15 @@ author: "Christian Arnold, Pooja Bhat, Judith Zaugg"
 date: "`r doc_date()`"
 package: "`r BiocStyle::pkg_ver('SNPhood')`"
 abstract: >
-  This vignette introduces the *SNPhood* package. In the following, we introduce main features and necessary background. In addition, we generated a workflow vignette that shows an example analysis using real data from the companion package *SNPhoodData* (see section <a href="#section7">*Workflow*</a> ). 
+  This vignette introduces the *SNPhood* package. In the following, we introduce main features and necessary background. In addition, we generated a workflow vignette that shows an example analysis using real data from the companion package *SNPhoodData* (see section <a href="#section7">*Workflow*</a> ).
 
 vignette: >
   %\VignetteIndexEntry{Introduction and Methodological Details}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-output: 
+output:
   BiocStyle::html_document
 ---
-
 
 # Motivation, Necessity, Package Scope and Limitations
 
@@ -42,7 +41,7 @@ First, **let's be clear what *SNPhood* is NOT**:
 
 * *SNPhood* is **NOT a peak caller of ChIP-Seq datasets** and works in an orthogonal manner instead. See below for more details and differences.
 * *SNPhood* is **NOT a tool for proper or designated quality control (QC) of ChIP-Seq datasets** and offers only rudimentary QC. For more details and a designated discussion about this issue, see <a href="#section6-4">here</a>.
-* *SNPhood* is **NOT a tool for the discovery of Quantitative Trait Loci (QTLs)**. For QTL discovery, designated tools such as WASP [13] or `r CRANpkg("MatrixEQTL")` [14] are available.
+* *SNPhood* is **NOT a tool for the analysis of Quantitative Trait Loci (QTLs)**. For QTL analyses, designated tools such as WASP [13] or `r CRANpkg("MatrixEQTL")` [14] are available.
 
 
 
@@ -58,9 +57,8 @@ First, **let's be clear what *SNPhood* is NOT**:
 
 
 
-
 # Basic Mode of Action
-<a name="section2"></a> 
+<a name="section2"></a>
 
 When running the main function *analyzeSNPhood*, a series of steps and calculations is performed.
 In summary, the basic mode of action can be summarized in the following schematic:
@@ -79,23 +77,22 @@ More specifically, the mode of action and basic workflow is as follows (see also
 1. Initiate the analysis and set all parameters accordingly
 2. Parse and validate SNPs (or other user defined genomic regions)
 3. Split the SNP regions into bins  
-4. ITERATE OVER ALL UNIQUE COMBINATIONS OF INPUT FILES OR FILE SETS  
-    4.1. Parse all files that belong to the input set  
-        &nbsp;&nbsp;&nbsp;4.1.1. Extract reads overlapping with the user regions  
-        &nbsp;&nbsp;&nbsp;4.1.2. Compute the genome-wide average for each  
-        &nbsp;&nbsp;&nbsp;4.1.3. Filter reads by strand (if applicable)   
-        &nbsp;&nbsp;&nbsp;4.1.4. Determine overlaps per region and bin   
-    4.2. If applicable (multiple files have been integrated), normalize the counts among each other and adjust genome-wide averages to adjust for different libray sizes  
-    4.3. ITERATE OVER ALL UNIQUE INDIVIDUALS WITH THE GIVEN SET OF INPUT FILES  
-        &nbsp;&nbsp;&nbsp;4.3.1. Parse all files that belong to the individual  
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4.3.1.1. Extract reads overlapping with the user regions  
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4.3.1.2. Determine the genotype distribution at each SNP based on all overlapping reads  
-			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4.3.1.3. Filter reads by strand (if applicable)   
-		    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4.3.1.4. If applicable, select reads specifically for each read group and determine the number of overlaps per region and bin   
-        &nbsp;&nbsp;&nbsp;4.3.2. If applicable (multiple files have been integrated), normalize the counts among each other to adjust for different libray sizes  
-		&nbsp;&nbsp;&nbsp;4.3.3. If applicable, normalize the counts using the previously processed input to calculate read enrichment
-5. If applicable and requested, normalize read counts among individuals only
-6. If requested, integrate matching SNP genotypes
+4. ITERATE OVER ALL USER-PROVIDED BAM FILES  
+    4.1. Perform checks (Index exists, BAM header is parsed, extract read groups)  
+    4.2. Parse the BAM file and extract reads overlapping with the SNP regions
+    4.3. Determine the genotype distribution at each SNP based on all overlapping reads.
+    4.4. Filter reads by strand (if applicable)  
+    4.5a. If read group-specific counts have been requested, do the following for each read group:     
+        &nbsp;&nbsp;4.5.1. Select only the reads belonging to the particular read group  
+        &nbsp;&nbsp;4.5.2. Determine the number of overlaps per region and bin  
+        &nbsp;&nbsp;4.5.3. Save (or update, when datasets should be pooled) the read-group specific count matrix for the current dataset (or individual, if datasets are pooled)   
+    4.5b. Otherwise, if allele-specific counts have not been requested, do the following:     
+        &nbsp;&nbsp;4.5.1. Determine the number of overlaps per region and bin  
+        &nbsp;&nbsp;4.5.2. If input normalization has been enabled, repeat 4.1-4.2 and 4.5.1 (b) for the negative control, normalize both libraries, and calculate enrichment of each bin.  
+        &nbsp;&nbsp;4.5.3. Save (or update, when datasets should be pooled) the read-group specific count matrix for the current dataset (or individual, if datasets are pooled)  
+5. If applicable and requested, normalize the read counts among all count matrices.
+6. If provided, integrate matching SNP genotypes.
+7. Return the *SNPhood* object that stores all data  
 
 
 The following Figure is an extension of Figure 2 and depicts in more detail the workflow of the package when running the function *analyzeSNPhood*. In addition, some parameters and their mode of action are highlighted in the step they come into play (depicted in orange).
@@ -108,9 +105,9 @@ The following Figure is an extension of Figure 2 and depicts in more detail the 
 </div>
 
 # Input
-<a name="section3"></a> 
+<a name="section3"></a>
 
-The following input data are required for the *SNPhood* package, which is also visualized in Figure 6:
+The following input data are required for the *SNPhood* package, which is also visualized in Figure 5:
 
 * One or multiple files in BAM (binary version of a SAM file that contains sequence alignment data) format containing the data for the molecular phenotype. For more details on the BAM format, see [here](http://genome.ucsc.edu/goldenpath/help/bam.html). Each BAM file must be indexed (i.e. an index file with the extension .bai must exist with an identical name as the corresponding BAM file). BAM files must also contain a valid header (i.e. chromosome names, and, if applicable, read groups). To perform allele-specific analyses the reads are required to be assigned a read group that determines whether they mapped better to the paternal or the maternal genome. This information can be obtained by mapping the reads to personal genomes (as described in Kasowski et al. [4], see also [here](https://github.com/sofiakp/ase) for the code on Github)
 * Set of genomic SNP positions in BED-like format. For more details on the BED format, see [here](http://genome.ucsc.edu/FAQ/FAQformat.html#format1). For more details on the type of BED files that *SNPhood* supports, see the description of the parameter <a href="#section64">*path_userRegions*</a>.
@@ -123,7 +120,7 @@ The following input data are required for the *SNPhood* package, which is also v
 </div>
 
 
-* Parameter list: A named list that contains the values of all mandatory parameters for running a *SNPhood* analysis (see below for details). 
+* Parameter list: A named list that contains the values of all mandatory parameters for running a *SNPhood* analysis (see below for details).
 * Data frame comprising the files to be processed (column "signal", see below). **Optionally and if applicable**, the following columns and data are supported and can be integrated:
     * "input": files containing input signal (input DNA w/o antibody as provided by most ChIP-Seq experiments) for normalization purposes. Multiple input files can be used (see example below). Set to NA if no input is available.
     * "individual": name of the individual. All files with the same individual ID (e.g. biological replicates) will be treated as one dataset by combining the read count information. Set to NA or assign a unique value for each file if all files should be treated separately.
@@ -141,8 +138,8 @@ cat("\n\n")
 
 
 files.df   = data.frame(signal = c("file1.bam", "file2.bam","file3.bam"),
-                        input = c("input1.bam","input1.bam","input2.bam, input3.bam"), 
-                        individual = c("S1","S1","S2"), 
+                        input = c("input1.bam","input1.bam","input2.bam, input3.bam"),
+                        individual = c("S1","S1","S2"),
                         genotype = c("file1.vcf:colName1","file1.vcf:colName1","file1.vcf:colName2"),
                         stringsAsFactors = FALSE)
 knitr::kable(files.df)
@@ -159,32 +156,25 @@ In summary, the following data can be integrated into *SNPhood*:
 
 
 # Output
-<a name="section4"></a> 
+<a name="section4"></a>
 
 The main function *analyzeSNPhood* returns an object of the class *SNPhood*. It contains all information and results necessary for subsequent analyses and visualization. For details on the structure of the object and how to extract information, see the help pages for *SNPhood-class* (?"SNPhood-class") or the *SNPhood* package itself (?SNPhood).
 
 # Further Methodological Details
-<a name="section5"></a> 
+<a name="section5"></a>
 
 We now explain various additional methodological and technical details in more detail.
-
-## SNPhood object and object validity
-
-SNPhood creates and returns object of type *SNPhood*. They are designed to be easy to work with, and all information can be extracted using a small set of functions. See the Workflow vignette and the function documentation for details.
-**If you receive an error message that a particular (potentially older) SNPhood object is not valid, please contact me, and I will help you to change it. This is very likely to be related due to slight changes during the development of SNPhood, and we apaologize for any inconveniance.**
 
 
 ## Plots
 
-All plots are generated with `r CRANpkg("ggplot2")` [8] and are either saved directly in the *SNPhood* object that serves as input for the respective plotting function or returned by the function so that users can modify and replot them as desired. See the help pages of the plotting functions for details. To edit plots, save them in a variable (e.g., plot = plotBinCounts(...)) and either edit them directly by modifying the internal structure of the ggplot list object (e.g., plot\$labels\$colour = "NEW LEGEND LABEL" to change the legend label) or by adding features in the usual ggplot style, such as plot + geom_lines(...) .
-
-
+All plots are generated with `r CRANpkg("ggplot2")` [8] and are either saved directly in the *SNPhood* object that serves as input for the respective plotting function or returned by the function so that users can modify and replot them as desired. See the help pages of the plotting functions for details. To edit plots, save them in a variable (e.g., plot = plotBinCounts(...)) and either edit them directly by modifying the internal structure of the ggplot list object (e.g., plot$labels$colour = "NEW LEGEND LABEL" to change the legend label) or by adding features in the usual ggplot style, such as plot + geom_lines(...) .
 
 ## Parameters
 
 *SNPhood* requires a number of parameters that are specified in a named list that is needed for the execution of the main function *analyzeSNPhood*. A default parameter list can be obtained by calling the function *getDefaultParameterList*.
 
-We explain the supported parameters in more detail in the section <a href="#section8">Parameters</a>.
+We explain the supported parameters in more detail in the section "Parameters" (see below).
 
 ## Input files
 
@@ -196,18 +186,17 @@ Note that if you already have your BAM files represented in an object of class *
 ## Quality control (QC)
 <a name="section6-4"></a>
 
-As discussed <a href="#section5">above</a>, ***SNPhood* is not suitable for ChIP-Seq QC**. It is important to assess potential biases such as GC, mapping, contamination or other biases beforehand using dedicated tools both within and outside the Bioconductor framework. Example packages from Bioconductor include `r Biocpkg("htSeqTools")`, `r Biocpkg("ChIPQC")`, `r Biocpkg("similaRpeak")` or `r Biocpkg("chipseq")` (see <a href="https://www.bioconductor.org/packages/release/BiocViews.html#">Bioconductor</a> for a complete list).
+As discussed <a href="#section5">beforehand</a>, ***SNPhood* is not suitable for ChIP-Seq QC** and has never been designed as such. It is important to assess potential biases such as GC, mapping, contamination or other biases beforehand using dedicated tools both within and outside the Bioconductor framework. Example packages from Bioconductor include `r Biocpkg("htSeqTools")`, `r Biocpkg("ChIPQC")`, `r Biocpkg("similaRpeak")` or `r Biocpkg("chipseq")` (see <a href="https://www.bioconductor.org/packages/release/BiocViews.html#">Bioconductor</a> for a complete list).
 Alternatively, external software such as *FASTQC* [11] or *Chance* [12] may also be used.
 
 Nevertheless, *SNPhood* offers some rudimentary QC mechanisms that accompany designated QC tools:
 
 * the user can specifically decide which reads from the input files should be included based on their flags, thereby allowing to exclude reads with poor quality. For more details, see <a href="#section6-6">here</a>.
-* the designated QC function *plotAndCalculateCorrelationDatasets* may be used to identify datasets that are weakly correlated with other datasets given the user-defined regions of interest based on pairwise correlation of the raw read values (i.e., the number of reads that overlap each region of interest). For example, one would usually expect that the correlation coefficients are very high among replicate samples and relatively high among different samples as well if they are of the same cell type. For more details, see also the R help of the function and the workflow vignette.
-
+* the designated QC function *plotAndCalculateCorrelationDatasets* may be used to identify datasets that are weakly correlated with other datasets given the user-defined regions of interest based on pairwise correlation of the raw read values (i.e., the number of reads that overlap each region of interest). For example, one would usually expect that the correlation coefficients are very high among replicate samples and relatively high among different samples as well. For more details, see also the R help of the function and the workflow vignette.
 
 
 ## Extending user regions and binning
-<a name="section5-3"></a> 
+<a name="section5-3"></a>
 
 
 The user-provided genomic positions can be extended symmetrically in both 5' and 3' direction to analyze their "neighborhood". The extension size can be set with the parameter *regionSize*. As an example: for a SNP at position chr1:1000 and parameter *regionSize* set to 500, the region will be extended 500bp in both directions, yielding the region chr1:[500-1500] of length 500+1+500 = 1001.
@@ -236,7 +225,7 @@ Note that read extraction out of BAM files can be time-consuming, especially if 
 
 ## Determination of SNP genotypes
 
-For each SNP, the read-group (e.g. most commonly specifying whether a read was mapped to the maternal or paternal genome) specific genotype distribution can be determined (see Figure 8). To determine the genotype distribution, all reads overlapping the SNP positions are extracted from the BAM files and the genotype distribution is determined using the `r Biocpkg("Biostrings")` package.
+For each SNP, the read-group (e.g. most commonly specifying whether a read was mapped to the maternal or paternal genome) specific genotype distribution can be determined (see Figure 7). To determine the genotype distribution, all reads overlapping the SNP positions are extracted from the BAM files and the genotype distribution is determined using the `r Biocpkg("Biostrings")` package.
 The genotypes can then be used in various visualizations (see the different plot functions that the package provides) to detect a genotype-dependent pattern.
 
 <div align="center">
@@ -248,26 +237,16 @@ The genotypes can then be used in various visualizations (see the different plot
 
 ## Normalization of reads counts and enrichment calculation
 
-Raw read counts among datasets can be misleading and are difficult to compare. To make reads comparable across individuals, *SNPhood* currently provides two different normalization procedures: 
+Raw read counts among datasets can be misleading and are difficult to compare. To make reads comparable across individuals, *SNPhood* currently provides two different normalization procedures:
 
 1. Normalization using input DNA: this will correct not only across samples but also for the accessibility of a given region and will allow a comparison across regions. This method requires that input DNA has been sequenced deep enough to provide a decent coverage across the entire genome. It is analogous to the input normalization by commonly used peak callers such as MACS2 [7].
-2. Normalization by library size:  this will only correct for library size and thus allow a comparison across libraries. Note that a comparison across regions is not necessarily valid since regions can differ in their accessibility. 
-
-
-The following figure gives an overview of the two different normalization procedures and how they function:
-
-<div align="center">
-<figure>
-<img src="figs/normDetails.png" height = "700px"/>
-<figcaption><i>Figure 9 - Schematics of the different normalization procedures and how they interact.</i></figcaption>
-</figure>
-</div>
+2. Normalization by library size:  this will only correct for library size and thus allow a comparison across libraries. Note that a comparison across regions is not necessarly valid since regions can differ in their accessibility.
 
 
 
-### Normalizing using negative controls (e.g. input DNA): 
+### Normalizing using negative controls (e.g. input DNA):
 
-Proper normalization between the ChIP and control samples particularly important when comparing across regions in the genome as the DNA accessibility differs between open and closed chromatin, which will be reflected in the number of "noise" reads obtained from those regions. If negative control files (such as input, IgG) are available, they can be integrated into the *SNPhood* package to normalize read counts and calculate enrichment for each user region. 
+Proper normalization between the ChIP and control samples particularly important when comparing across regions in the genome as the DNA accessibility differs between open and closed chromatin, which will be reflected in the number of "noise" reads obtained from those regions. If negative control files (such as input, IgG) are available, they can be integrated into the *SNPhood* package to normalize read counts and calculate enrichments for each user region.
 
 Normalizing read counts by input is possible when the following criteria are met:
 
@@ -279,42 +258,9 @@ Note that if this normalization is performed, this overrides the value of the pa
 
 Specifically, input normalization works as follows. First, read counts between input and signal are normalized to account for differences in library size (see below for details). Thus, the resulting enrichment is based on the normalized and **not** the raw read counts (i.e., after applying a correction by size factors using the `r Biocpkg("DeSeq2")` [3] package, see next section) for both input and signal. Second, for each bin of each SNP region, the maximum of the following three numbers is taken as basis for calculating the enrichment:
 
-* the average number of input reads per bin **across the full genome** (global control)
-* the average number of input reads per bin **for that particular user region** (local control)
+* the average number of input reads per bin **across all user regions**
+* the average number of input reads per bin **for that particular user region**
 * the number of input reads for the specific bin
-
-The global average is calculated as follows: First, the total number of reads across the full genome is determined. Because of repetitive features on the chromosomes, the actual mappable genome size, however, is smaller than the full genome size (between ~65% and ~80%, dependent on the actual read length). This so-called  mappable or effective genome size is important to correctly calculate the genome wide average per base and subsequently per bin. The effective genome size is specified by the parameter *effectiveGenomeSizePercentage*. *SNPhood* tries to automatically determine a good proxy for it from the data so the user does not have to worry about setting it correctly. However, there are cases when setting reasonable values for this parameter is mandatory (see parameter description at the end for more details). To do so, we estimate the read length in the BAM file by taking the maximal read length of the first 1000 reads and estimate a reasonable number for the effective genome size given the genome assembly and the read length according to the data for the proportions of unique start sites for nucleotide-space short tag alignments in Koehler et al. (2011), Table 1 [10]. Because these values have been obtained only for a particular genome assembly version for each species (e.g., hg19), we use the same values for other assembly versions of the same species (e.g., hg38). If this approximation is not accurate enough for the user, the parameter can be set manually, as mentioned before. Furthermore, the read length from the table will be taken that is closest to the observed one. For example, for a read length of 80 for hg19, the value for read length 75 (79.3%) will be taken.
-
-
-| Species |  25 (1) (%)	|  30 (1) (%)| 	35 (1) (%)| 	50 (2) (%)	| 60 (3) (%)| 	75 (4) (%)| 	90 (5) (%)| 
-| :-----: | :-----: | :-----: | :-----:| :-----: | :-----:| :-----: | :-----: | 
-| Homo sapiens | 66.0 | 70.9 | 74.1 | 76.9 | 77.5 | 79.3 | 80.8 | 
-| Mus musculus | 69.9 | 74.4 | 77.1 | 79.1 | 79.4 | 80.7 | 81.7 | 
-| Caenorhabditis elegans | 85.3 | 87.7 | 89.0 | 89.8 | 89.9 | 90.6 | 91.1 | 
-| Drosophila melanogaster | 67.5 | 68.4 | 69.0 | 69.2 | 69.2 | 69.5 | 69.8 | 
-
-<div align="center">
-<table width = "90%">
-
-<caption><i>Table 1 - Overview of the values for the effective genome size that are used in *SNPhood*, according to Table 1: Proportions of unique start sites for nucleotide-space short tag alignments in Koehler et al. (2011) [10]</i></caption>
-</table>
-</div>
-
-
-
-The global average is then calculated by calculating the average number of reads that overlap with a bin, as follows:
-
-*nReadsTotal  / (genomeSizeTotal x effectiveGenomeSizeProp) x (binSize + readLength - 1)*
-
-The variables are defined as follows:
-
-* *nReadsTotal*: Total number of reads in the input file, subject to the same filters as applied for the signal file as specified in the various *readFlag_* parameters (see section Read retrieval options).
-* *genomeSizeTotal*: The total genome size, in base pairs
-* *effectiveGenomeSizeProp*: The effective genomen size, see above, specified as a proportion (i.e., between 0 and 1)
-* *binSize*: The value of the parameter *binSize* (that is, size of the bins)
-* *readLength*: The read length in base pairs, as determined from the inpit file, see above
-
-
 
 The maximum of these three values (after normalization) is then compared to the normalized number of reads per bin in the signal file and an enrichment is calculated. This is similar to the normalization implement in the *MACS2* peak caller [7]; it avoids inflating small read counts from input and corrects local biases caused by DNA accessibility.
 
@@ -324,7 +270,7 @@ The following illustration summarizes how input normalization is performed for e
 <div align="center">
 <figure>
 <img src="figs/inputNormalizationScheme.png" height="300px"/>
-<figcaption><i>Figure 10 - Schematics of how the input normalization works. See text for details.</i></figcaption>
+<figcaption><i>Figure 9 - Schematics of how the input normalization works. See text for details.</i></figcaption>
 </figure>
 </div>
 
@@ -343,24 +289,20 @@ After this normalization, read counts are numeric values that reflect the normal
 
 The normalization is done using the `r Biocpkg("DeSeq2")` package by creating a virtual sample and determining size factors for each library that reflect the normalization factor, based on the total number of read counts per user region (i.e., before binning). For more details, see the `r Biocpkg("DeSeq2")` package and Love et al. (2014) [3].
 
-### Normalization when pooling datasets
-
-As indicated in Figure 9, normalization may happen at different steps. Because *SNPhood* supports multiple datasets to be pooled together to one dataset for both signal and input, multiple normalization steps may be required.
-
-
 
 ## Allelic bias tests
 
 
-The function *testForAllelicBiases*  performs a statistical test to test for allelic biases given the read counts of two read groups (e.g., maternal vs. paternal). The prerequisite for this type of analysis is that the reads have been reliably mapped to the paternal and maternal genome (e.g. as described in Kasowski et al. [4]).
+The function *testForAllelicBiases*  performs a statistical test to test for allelic biases given the read counts of two read groups (e.g., maternal vs. paternal). The prerequisite for this type of analysis is that the reads have been reliably mapped to the paternal and maternal genome (e.g. as described in Kasowski et al. [4]). This task is not trivial and not in the scope of *SNPhood*, which is why dedicated external tools must be used.
 
-To determine whether a given region shows an allelic bias, we perform a binomial test for each bin and use the lowest p-value for each region as a test statistic, which we compare to an empirical p-value distribution (described below). This ensures to select the bin with the most power (which often has the highest number of reads) to detect allelic bias. We emphasize that the obtained p-values should not be used as anything else than a test statistic.
 
-To assess the significance of each region we implemented a permutation-based procedure to control the false discovery rate (FDR). In summary, we use the p-values from the binomial tests as a test statistic to calculate the FDR with a random background model. More specifically, for each bin, we generate an empirical p-value distribution by randomly but equally assigning each overlapping read to one of the two read groups, perform a binomial test and select the most significant p-value for each region. For a given p-value threshold the FDR is then calculated as the fraction of significant regions identified from the random by the total number of significant regions. Finally, we note that the FDR calculation is based on the full set of user regions. paste. This approach is conceptually similar to what was done in Alexandrov et al. 2013 [16], section "Statistical analysis of relationships between age and mutations". Thus, because that overdispersion affects both our real and shuffled data, it is likely that our procedure is rather too pessimistic than too optimistic in discovering allelic bias.
+To determine the significance across regions, one can select the lowest p-value for each region. This ensures to select the bin with the most power (which often has the highest number of reads) to detect allelic bias. However, the tests for bins are not independent from one another and the p-values are not adjusted for multiple testing. For this reason, we emphasize that the obtained p-values should not be used as anything else than a test statistic (see below).
 
-As an output, the raw p-values (to be used as "scores") from the binomial tests, estimates for the allelic fraction and corresponding confidence intervals are reported for each bin across all user regions. In addition, the corresponding FDR values for a user-defined set of p-values is also given that may then be used to select the regions based on a given FDR threshold.
+We therefore implemented a permutation-based procedure to control the false discovery rate (FDR). In summary, we use the p-values from the binomial test as a test statistic to calculate the FDR with a random background model rather than directly, and our approach is therefore conceptually similar to what was done in Alexandrov et al. 2013 [15], section "Statistical analysis of relationships between age and mutations". Thus, due to the fact that overdispersion affects both our real and shuffled data, it is likely that our procedure is rather too pessimistic than too optimistic in discovering allelic bias. More specifically, for each bin, we generate an empirical p-value distribution by randomly but equally assigning each overlapping read to one of the two read groups, perform a binomial test and select the most significant p-value for each region. For a given p-value threshold the FDR is then calculated as the fraction of significant regions identified from the random by the total number of significant regions. Finally, we note that the FDR calculation is based on the full set of user regions.
 
-SNPhood has originally been designed to analyze read profiles in a bin-wise fashion. **Therefore, currently, the FDR calculation can only be performed if the number of bins per region is at least 5. For analyses with less than 5 bins, the raw p-values have to be corrected manually, for example with standard multiple testing corrections**. Note, however, that potential overdispersion in the count data is not accounted for in such a case. We are currently thinking about a procedure that is more independent on the number of bins.
+As an output, the raw p-values from the binomial tests, estimates for the allelic fraction and corresponding confidence intervals are reported for each bin across all user regions. In addition, the corresponding FDR values for a user-defined set of p-values is also given that may then be used to select only regions that fulfill a user-defined condition based on FDR preferences.
+
+
 
 
 ## Genotype integration
@@ -372,62 +314,26 @@ We currently support two ways of integrating genotypes with user regions (e.g., 
 
 For each dataset/individual in a *SNPhood* object, a file in VCF format may be used to associate genotypes for each SNP region. For more details on the VCF format, see [here](http://samtools.github.io/hts-specs/VCFv4.2.pdf).
 
-Parsing VCF files is done using the `r Biocpkg("VariantAnnotation")` package, which supports both uncompressed and compressed (gzipped, file ending .gz) VCF files that comply with the VCF standard (e.g. as used by the *1000 Genomes Project* [5]). 
+Parsing VCF files is done using the `r Biocpkg("VariantAnnotation")` package, which supports both uncompressed and compressed (gzipped, file ending .gz) VCF files that comply with the VCF standard (e.g. as used by the *1000 Genomes Project* [5]).
 
 Matching is done by position rather than ID of the SNPs, and SNP positions from the *SNPhood* object not defined in the corresponding VCF file will have a genotype of NA. Non-matching rows from the VCF file are discarded and not imported. The column names (i.e., the IDs of the individuals to extract the genotypes from) must also be provided.
 
 
 ## Clustering
 
-*SNPhood* provides some clustering functionalities to cluster SNPs based on their local neighborhood. Clustering can be done on both counts or enrichment, dependent on the type of data stored in the *SNPhood* object. Data from any of the defined read groups and datasets can be used for this purpose.
+*SNPhood* provides some clustering functionalities to cluster SNPs based on their local neighbourhood. Clustering can be done on both counts or enrichments, dependent on the type of data stored in the *SNPhood* object. Data from any of the defined read groups and datasets can be used for this purpose.
 
 The underlying clustering is done using partitioning around medoids (PAM), which is implemented in the `r Biocpkg("cluster")` package. PAM clustering is more robust than k-means clustering as the algorithm minimizes the sum of dissimilarities instead of a sum of squared Euclidean distances.
 
-To compare and cluster different datasets, and in particular, to compare the shape of binding across the different SNPs within one or several data sets, we implemented a standardization procedure across the bins for each SNP (i.e. subtracting the mean dividing by standard deviation for each SNP). This allows the investigation of the binding shape irrespective of the overall signal intensity.
+To compare and cluster different datasets, and in particular, to compare the shape of binding across the different SNPs within one or several data sets, we implemented a standardisation procedure across the bins for each SNP (i.e. subtracting the mean dividing by standard deviation for each SNP). This allows the investigation of the binding shape irrespective of the overall signal intensity.
 
 Several plotting functions are available to investigate the clusters, see the help pages for details.
 
 An additional feature that might be useful when performing clustering on several individuals is to group individuals for each SNP according to their genotype, which we divide into strong and weak genotypes. They are determined based on the signal obtained for the different genotypes (see help pages of the function *calculateWeakAndStrongGenotype*). One can then perform the clustering only on the signal averaged across all high-genotype individuals at each SNP to increase the signal to noise ratio (analogous to the analysis in Figure 6 in Grubert et al. [6]).
 
 
-
-# Memory footprint and execution time, feasibility with large datasets
-
-In this section, we will give an overview over CPU and memory requirements when running or planning a *SNPhood* analysis. 
-
-## CPU time
-First let's focus on CPU time. The following parameters have the largest influence on CPU time:
-
-* the number of CPUs (parameter *nCores*). Most of the time-consuming parts of *SNPhood* can be parallelized, and execution time is greatly reduced and linearly decreases with the number of CPUs used. 
-* the number of reads that are extracted from the input files. More reads generally increase the running time (see memory below for details on which parameters influence the number of reads) 
-* the binning scheme (parameter *binSize*). Binning involves determining for each read which bin it overlaps with, which is a time-consuming operation. Therefore, execution time is minimized when there is no binning (i.e., the value of the parameter *binSize* equals the full user regions: 2 x *regionSize* + 1 for the original user position). However, having only one bin also substantially limits the analyses possibilities, so make sure you understand the consequences.
-
-
-## Memory footprint
-Now let's take a closer look at memory. Due to the complexity of the data and the various parameters and their dependencies, it is not possible to establish a "formula" of how much memory is needed. However, the following parameters  have the largest influence on the memory footprint:
-
-* the number of reads that are extracted from the input files. This in fact is mostly influenced by:
-    - the number of datasets. The higher the number of datasets, trivially, the higher the memory footprint. Similarly, if input normalization is enabled, this will also increase the memory footprint.
-    - the number of user regions and the value of the parameter *regionSize*. The more user regions are used as input, the higher the memory footprint because for each overlapping read, some information has to be stored. Similarly, large values of the parameter *regionSize* result in more reads being extracted.
-    - the number of reads stored in the corresponding input files. Analyses with BAM files containing a large number of reads will naturally occupy more memory than smaller BAM files.
-    - the strictness of the read filters. Less stringent read filters will exclude less reads, therefore increasing the nubmer of reads that are extracted.
-* the values of the parameters *keepAllReadCounts* and *poolDatasets*. The former is only relevant if replicates are defined and if set to TRUE, the memory footprint is higher. The latter decreases the memory footprint because multiple individuals are considered one meta-dataset with read count information being stored only once.
-* the value of the parameter *readGroupSpecific*. More read groups increase the memory footprint because read count information is stored separately for each of them.
-* the binning scheme (parameter *binSize*). If only one bin is required, the memory footprint is greatly reduced. Otherwise, the memory footprint increases with a more fine-tuned binning scheme because more reads overlap bins, which has to be recorded
-
-## Summary and rules of thumb
-
-This all sounds terribly complicated, but here are a few rules of thumb:
-
-* *SNPhood* can principally be used for population-sized epigenomic datasets. Normally, medium-sized analyses can be done with "regular" computers. That is, analyses involving up to 10,000 - 50,000 or so user regions with normal *regionSize* parameters (say 500) should run flawlessly and relatively fast, and we did successfully run complex analyses. The complexity of the underlying BAM files is less influential as compared to the pure number of user regions from our experience.
-* Use multiple CPUs if available. Although not all parts of the code benefit from multiple CPUs, the running time can be greatly decreased by parallel execution.
-* If you use replicates, keep the default value of *keepAllReadCounts* (FALSE) unless you need individual read counts for each replicate or treat all files as separate individuals altogether.
-* Large analyses with >50,000 user regions, however, may occupy a lot of memory and CPU time, but this again depends on a few parameters, primarily the number of reads that overlap with the user regions. It might be a better idea to run multiple separate analyses instead. If you have questions regarding a big analysis you want to do, do not hesitate contacting us.
-
-
-
 # Parameters
-<a name="section6"></a> 
+<a name="section6"></a>
 
 
 ## Performance options
@@ -442,7 +348,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **keepAllReadCounts**
 
-*Description*: If TRUE all count matrices from datasets with the same individual ID will be stored within the *SNPhood* object after pooling datasets. This parameter is only relevant if the parameter *poolDatasets* is set to TRUE and will be ignored otherwise. Setting it to FALSE (the default) can save a considerable amount of space (decreased memory consumption) but makes it impossible to analyze and visualize read counts for the original datasets. This will only be possible for the pooled datasets, as given by their individual ID.
+*Description*: If TRUE all count matrices from datasets with the same individual ID will be stored within the *SNPhood* object after pooling datasets. This parameter is only relevant if the parameter *poolDatasets* is set to TRUE and will be ignored otherwise. Setting it to FALSE (the default) can save a considerable amount of space (decreased memory consumption) but makes it impossible to analyze and visualize read counts for the original datasets. This will onyl be possible for the pooled datasets, as given by their individual ID.
 
 *Valid values*: TRUE or FALSE
 
@@ -462,7 +368,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **normAmongEachOther**
 
-*Description*: Only applicable when when analyzing multiple datasets. If TRUE all datasets will be normalized among each other, i.e. the read counts of all processed files will be normalized using the size factor normalization in the `r Biocpkg("DeSeq2")` package.
+*Description*: Only applicable when when analysing multiple datasets. If TRUE all datasets will be normalized among each other, i.e. the read counts of all processed files will be normalized using the size factor normalization in the `r Biocpkg("DeSeq2")` package.
 
 *Valid values*: TRUE or FALSE
 
@@ -482,7 +388,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 ## Read retrieval options
 
-**strand** 
+**strand**
 
 *Description*:  Should reads be counted regardless of the strand from the original SNP position ("BOTH"), only if they are in sense direction to the region of interest ("SENSE") or only antisense ("ANTISENSE")? To retrieve reads regardless of the strand, use the option "both". If the strand in the user regions file is not provided, or if it is "*" or ".", reads will be retrieved regardless of the strand.
 
@@ -493,7 +399,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readGroupSpecific**
 
-*Description*:  In BAM files, @RG tags can be defined, which allows grouping a set of reads from different experiments, alleles, origins, etc. Each read is associated with one specific read group. The parameter *readGroupSpecific* determines if read counts will be analyzed individually for each read group as specified in the BAM file. If set to TRUE, any input normalization will be turned off, and only read counts are returned but no enrichment due to the lack of input normalization. If set to FALSE, the defined read groups will be ignored and counts and enrichment are calculated regardless of the read group. This is particularly useful if read groups provide information about whether a read was mapped to the 'maternal' or 'paternal' genome, and required for allele-specific analyses.
+*Description*:  In BAM files, @RG tags can be defined, which allows grouping a set of reads from different experiments, alleles, origins, etc. Each read is associated with one specific read group. The parameter *readGroupSpecific* determines if read counts will be analyzed individually for each read group as specified in the BAM file. If set to TRUE, any input normalization will be turned off, and only read counts are returned but no enrichments due to the lack of input normalization. If set to FALSE, the defined read groups will be ignored and counts and enrichments are calculated regardless of the read group. This is particularly useful if read groups provide information about whether a read was mapped to the 'maternal' or 'paternal' genome, and required for allele-specific analyses.
 
 *Valid values*: TRUE or FALSE
 
@@ -502,25 +408,25 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_isPaired**
 
-*Description*:  A logical(1) indicating whether unpaired (FALSE), paired (TRUE), or any (NA) read should be returned. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether unpaired (FALSE), paired (TRUE), or any (NA) read should be returned. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
-*Default value*: TRUE 
+*Default value*: TRUE
 
 
 **readFlag_isProperPair**
 
-*Description*:  A logical(1) indicating whether improperly paired (FALSE), properly paired (TRUE), or any (NA) read should be returned. A properly paired read is defined by the alignment algorithm and might, e.g., represent reads aligning to identical reference sequences and with a specified distance. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether improperly paired (FALSE), properly paired (TRUE), or any (NA) read should be returned. A properly paired read is defined by the alignment algorithm and might, e.g., represent reads aligning to identical reference sequences and with a specified distance. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
-*Default value*: TRUE 
+*Default value*: TRUE
 
 
 **readFlag_isUnmappedQuery**
 
-*Description*:  A logical(1) indicating whether unmapped (TRUE), mapped (FALSE), or any (NA) read should be returned. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether unmapped (TRUE), mapped (FALSE), or any (NA) read should be returned. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
@@ -529,34 +435,34 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_hasUnmappedMate**
 
-*Description*:  A logical(1) indicating whether reads with mapped (FALSE), unmapped (TRUE), or any (NA) mate should be returned. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether reads with mapped (FALSE), unmapped (TRUE), or any (NA) mate should be returned. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
 *Default value*: FALSE
 
 
-**readFlag_isMinusStrand** 
+**readFlag_isMinusStrand**
 
-*Description*:  A logical(1) indicating whether reads aligned to the plus (FALSE), minus (TRUE), or any (NA) strand should be returned. See the `r Biocpkg("Rsamtools")` package in R for more information.
-
-*Valid values*: TRUE or FALSE or NA
-
-*Default value*: NA 
-
-
-**readFlag_isMateMinusStrand** 
-
-*Description*:  A logical(1) indicating whether mate reads aligned to the plus (FALSE), minus (TRUE), or any (NA) strand should be returned. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether reads aligned to the plus (FALSE), minus (TRUE), or any (NA) strand should be returned. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
-*Default value*: NA 
+*Default value*: NA
+
+
+**readFlag_isMateMinusStrand**
+
+*Description*:  A logical(1) indicating whether mate reads aligned to the plus (FALSE), minus (TRUE), or any (NA) strand should be returned. See the Rsamtools package in R for more information.
+
+*Valid values*: TRUE or FALSE or NA
+
+*Default value*: NA
 
 
 **readFlag_isFirstMateRead**
 
-*Description*:  A logical(1) indicating whether the first mate read should be returned (TRUE) or not (FALSE), or whether mate read number should be ignored (NA). See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether the first mate read should be returned (TRUE) or not (FALSE), or whether mate read number should be ignored (NA). See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
@@ -565,7 +471,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_isSecondMateRead**
 
-*Description*:  A logical(1) indicating whether the second mate read should be returned (TRUE) or not (FALSE), or whether mate read number should be ignored (NA). See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether the second mate read should be returned (TRUE) or not (FALSE), or whether mate read number should be ignored (NA). See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
@@ -574,7 +480,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_isNotPrimaryRead**
 
-*Description*:  A logical(1) indicating whether alignments that are primary (FALSE), are not primary (TRUE) or whose primary status does not matter (NA) should be returned. A non-primary alignment (“secondary alignment” in the SAM specification) might result when a read aligns to multiple locations. One alignment is designated as primary and has this flag set to FALSE; the remainder, for which this flag is TRUE, are designated by the aligner as secondary. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether alignments that are primary (FALSE), are not primary (TRUE) or whose primary status does not matter (NA) should be returned. A non-primary alignment (“secondary alignment” in the SAM specification) might result when a read aligns to multiple locations. One alignment is designated as primary and has this flag set to FALSE; the remainder, for which this flag is TRUE, are designated by the aligner as secondary. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
@@ -583,7 +489,7 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_isNotPassingQualityControls**
 
-*Description*:  A logical(1) indicating whether reads passing quality controls (FALSE), reads not passing quality controls (TRUE), or any (NA) read should be returned. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) indicating whether reads passing quality controls (FALSE), reads not passing quality controls (TRUE), or any (NA) read should be returned. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
@@ -592,25 +498,16 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_isDuplicate**
 
-*Description*:   logical(1) indicating that un-duplicated (FALSE), duplicated (TRUE), or any (NA) reads should be returned. 'Duplicated' reads may represent PCR or optical duplicates. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:   logical(1) indicating that un-duplicated (FALSE), duplicated (TRUE), or any (NA) reads should be returned. 'Duplicated' reads may represent PCR or optical duplicates. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE or NA
 
 *Default value*: FALSE
 
 
-**readFlag_minMapQ**
+**readFlag_reverseComplement**
 
-*Description*:  A non-negative integer(1) specifying the minimum mapping quality to include. BAM records with mapping qualities less than this value are discarded.. See the `r Biocpkg("Rsamtools")` package in R for more information.
-
-*Valid values*: any non-negative integer. Nothing is filtered with the default value of 0.
-
-*Default value*: 0
-
-
-**readFlag_reverseComplement** 
-
-*Description*:  A logical(1) vectors. BAM files store reads mapping to the minus strand as though they are on the plus strand. Rsamtools obeys this convention by default (reverseComplement=FALSE), but when this value is set to TRUE returns the sequence and quality scores of reads mapped to the minus strand in the reverse complement (sequence) and reverse (quality) of the read as stored in the BAM file. This might be useful if wishing to recover read and quality scores as represented in fastq files, but is NOT appropriate for variant calling or other alignment-based operations. See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) vectors. BAM files store reads mapping to the minus strand as though they are on the plus strand. Rsamtools obeys this convention by default (reverseComplement=FALSE), but when this value is set to TRUE returns the sequence and quality scores of reads mapped to the minus strand in the reverse complement (sequence) and reverse (quality) of the read as stored in the BAM file. This might be useful if wishing to recover read and quality scores as represented in fastq files, but is NOT appropriate for variant calling or other alignment-based operations. See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE
 
@@ -619,21 +516,19 @@ This all sounds terribly complicated, but here are a few rules of thumb:
 
 **readFlag_simpleCigar**
 
-*Description*:  A logical(1) vector which, when TRUE, returns only those reads for which the cigar (run-length encoded representation of the alignment) is missing or contains only matches / mismatches ('M'). See the `r Biocpkg("Rsamtools")` package in R for more information.
+*Description*:  A logical(1) vector which, when TRUE, returns only those reads for which the cigar (run-length encoded representation of the alignment) is missing or contains only matches / mismatches ('M'). See the Rsamtools package in R for more information.
 
 *Valid values*: TRUE or FALSE
 
 *Default value*: FALSE
 
-
-
 ## User regions options
 
-<a name="section64"></a> 
+<a name="section64"></a>
 
 **path_userRegions**
 
-*Description*:  Path to a BED file with a set of user regions for which read counts or enrichment values should be obtained. Supported are regular BED files with with TAB as column separator and 6 columns: chromosome (format: integers only or of type chr*), start (format: integers), end (format: integers), annotation (format: character), score (format: integer, will be ignored), and strand (format: one of [+-*.]). **Note that the order of the columns is very important**. 
+*Description*:  Path to a BED file with a set of user regions for which read counts or enrichment values should be obtained. Supported are regular BED files with with TAB as column separator and 6 columns: chromosome (format: integers only or of type chr*), start (format: integers), end (format: integers), annotation (format: character), score (format: integer, will be ignored), and strand (format: one of [+-*.]). **Note that the order of the columns is very important**.
 
 For user convenience, the following additional BED-like formats with fewer columns are supported and automatically recognized according to their total number of columns: 5 columns BED file (chromosome, start, end, annotation, strand), 4 columns BED file (chromosome, start, end, annotation), 3 columns BED file (chromosome, SNP position, annotation) and 2 columns BED file (chromosome, SNP position). See also the section input above for a visual summary of supported formats.
 
@@ -645,20 +540,11 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 **assemblyVersion**
 
-*Description*:  Genome assembly version. See valid values for a list of currently supported genome assemblies. 
+*Description*:  Genome assembly version. See valid values for a list of currently supported genome assemblies.
 
 *Valid values*: hg18, hg19, hg38, mm9, mm10, dm3, sacCer3, and sacCer2 are supported. Click <a href="#section8">here</a> to contact us if you need additional genomes.
 
 *Default value*:  hg19
-
-**effectiveGenomeSizePercentage**
-
-*Description*:  The proportion of the genome that resembles the effective or mappable genome size, given the specific genome assembly version and the read length. If set to -1, *SNPhood* tries to automatically determine a reasonable value given the data from Koehler et al. (2011), Table 1 [10]. Currently, this automatic determination is only possible for the following genome assemblies: hg38, hg19, hg18, mm10, mm9, and dm3. For other genome assemblies or user-defined and potentially more precise values, the parameter has to or can be set manually. For more details, see  <a href="#section6-7">here</a>.
-
-*Valid values*: -1 or a value between 0 and 1.
-
-*Default value*:  -1
-
 
 
 **headerLine**
@@ -667,19 +553,19 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 *Valid values*: TRUE or FALSE
 
-*Default value*: TRUE 
+*Default value*: TRUE
 
 
 **linesToParse**
 
 *Description*:  For test purposes, use only the first X lines instead of the full file. Set to -1 to read in the full file.
-	
+
 *Valid values*: any positive integer value or -1
 
 *Default value*: -1
 
 
-**regionSize** 
+**regionSize**
 
 *Description*:  This parameter determines the size of the user regions (in bp). The user-provided positions will be extended by this value on both sides, so that the entire region will be of size:2* *regionSize*  + 1 because the original user position is also included. For more details, see <a href="section5-3">*Extending user regions and binning*</a>.
 
@@ -687,13 +573,13 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 *Valid values*: any positive integer value
 
-*Default value*: 500 
+*Default value*: 500
 
 
 **binSize**
 
-*Description*:  Size (in bp) of each bin. The full user region is binned equally according to the value of *binSize*. For more details, see the section 
-*Extending user regions and binning*. 
+*Description*:  Size (in bp) of each bin. The full user region is binned equally according to the value of *binSize*. For more details, see the section
+*Extending user regions and binning*.
 *Valid values*: any positive integer value between 1 and *regionSize* (see above)
 
 *Default value*: 10
@@ -701,19 +587,19 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 **lastBinTreatment**
 
-*Description*:  The last bin in each region may be shorter than the other bins due to the specific settings of the parameters *regionSize* and *binSize*. Should the last bin be left untouched ("KEEPUNCHANGED"), deleted ("DELETE"), or extended to the bin size of the other bins ("EXTEND")? 
+*Description*:  The last bin in each region may be shorter than the other bins due to the specific settings of the parameters *regionSize* and *binSize*. Should the last bin be left untouched ("KEEPUNCHANGED"), deleted ("DELETE"), or extended to the bin size of the other bins ("EXTEND")?
 
 *Valid values*: KEEPUNCHANGED, DELETE or EXTEND
 
 *Default value*: KEEPUNCHANGED
 
-**zeroBasedCoordinates** 
+**zeroBasedCoordinates**
 
 *Description*:  By default, bases in BED files are zero-based. If not, set this parameter to FALSE, and positions will be converted to a zero-based format (i.e., positions will be decreased by one).
 
 *Valid values*: TRUE or FALSE
 
-*Default value*: TRUE 
+*Default value*: TRUE
 
 **startOpen** and **endOpen**
 
@@ -725,13 +611,13 @@ For user convenience, the following additional BED-like formats with fewer colum
 
 
 # Example Workflow
-<a name="section7"></a> 
+<a name="section7"></a>
 
 For a detailed example workflow, see the workflow vignette [exampleWorkflow](exampleWorkflow.html).
 
 
 # Bug Reports, Feature Requests and Contact Information
-<a name="section8"></a> 
+<a name="section8"></a>
 
 We value all the feedback that we receive and will try to reply in a timely manner.
 
@@ -740,11 +626,11 @@ Please report any bug that you encounter as well as any feature request that you
 
 
 # References
-<a name="section9"></a> 
+<a name="section9"></a>
 
 [1] R Core Team (2014). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL  http://www.R-project.org/
 
-[2] Morgan M, Pagès H, Obenchain V and Hayden N. Rsamtools: Binary alignment (BAM), FASTA, variant call (BCF), and tabix file import. R package version 1.18.2, http://bioconductor.org/packages/release/bioc/html/Rsamtools.html. 
+[2] Morgan M, Pagès H, Obenchain V and Hayden N. Rsamtools: Binary alignment (BAM), FASTA, variant call (BCF), and tabix file import. R package version 1.18.2, http://bioconductor.org/packages/release/bioc/html/Rsamtools.html.
 
 [3] Love, M. I., Huber, W., & Anders, S. (2014). Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. Genome Biol, 15(12), 550.
 
@@ -771,5 +657,3 @@ Please report any bug that you encounter as well as any feature request that you
 [14] Shabalin, A. A. (2012). Matrix eQTL: ultra fast eQTL analysis via large matrix operations. Bioinformatics, 28(10), 1353-1358.
 
 [15] Alexandrov, L. B., Nik-Zainal, S., Wedge, D. C., Aparicio, S. A., Behjati, S., Biankin, A. V., ... & Boyault, S. (2013). Signatures of mutational processes in human cancer. Nature, 500(7463), 415-421.
-
-
