@@ -373,8 +373,6 @@ plotBinCounts <- function(SNPhood.o, regions = 1, readGroups = NULL, datasets = 
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
-    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
-    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -753,11 +751,7 @@ plotBinCounts <- function(SNPhood.o, regions = 1, readGroups = NULL, datasets = 
         p <- p + scale_colour_manual(values = .generateColorsForReadGroupsAndDatasets(length(datasets), length(readGroups), colorPalette, saturationMin = 0.3, deleteFirst = FALSE, deleteLast = TRUE),
                                      labels = labelsTrimmed)
     } 
-    
-    
-    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
-    
-    
+
     if (plotGraph) {
         
         if (!testNull(fileToPlot)) {
@@ -767,7 +761,7 @@ plotBinCounts <- function(SNPhood.o, regions = 1, readGroups = NULL, datasets = 
         
         return(print(p))
     } else {
-        return(p)
+        return(invisible(p))
     }
     
     
@@ -816,9 +810,6 @@ plotAllelicBiasResultsOverview <- function(SNPhood.o, regions = 1, datasets = NU
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
-    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
-    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
-    
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -827,7 +818,6 @@ plotAllelicBiasResultsOverview <- function(SNPhood.o, regions = 1, datasets = NU
     .plotRegionFeatures(SNPhood.o, regions = regions, readGroups = NULL, datasets = datasets, mergeReadGroupCounts = FALSE, plotChr = plotChr, plotStartPos = plotStartPos, plotEndPos = plotEndPos, ylim = ylim, plotRegionBoundaries = plotRegionBoundaries, plotRegionLabels = plotRegionLabels, plotAllelicBiasResults = TRUE,         
                         signThreshold = signThreshold, pValueSummary = pValueSummary, maxWidthLabels = maxWidthLabels, colorPalette = colorPalette,  sizePoints = sizePoints, plotGraph = plotGraph, fileToPlot = fileToPlot, verbose = verbose)
     
-    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
 }  
 
@@ -875,16 +865,13 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
-    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
-    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+
     
     assertFlag(mergeReadGroupCounts) 
     
     .plotRegionFeatures(SNPhood.o, regions = regions, readGroups = readGroups, datasets = datasets, mergeReadGroupCounts = mergeReadGroupCounts, plotChr = plotChr, plotStartPos = plotStartPos, plotEndPos = plotEndPos, ylim = ylim, plotRegionBoundaries =  plotRegionBoundaries, plotRegionLabels = plotRegionLabels, plotAllelicBiasResults = FALSE,         
                         maxWidthLabels = maxWidthLabels, colorPalette = colorPalette, sizePoints = sizePoints, type = type, plotGraph = plotGraph, fileToPlot = NULL, verbose = verbose)
 
-    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
-    
     }
 
 #' @import checkmate 
@@ -1271,7 +1258,7 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
     dataset = .checkAndConvertDatasetArgument(SNPhood.o, dataset, nullAllowed = FALSE, maxLength = 1) 
     assertFlag(normalize)
     
-    
+    nBinsCur = nBins(SNPhood.o)
     
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     if (!testNull(fileToPlot)) {
@@ -1288,6 +1275,11 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
     
     dimnames(target.m) = list(annotationRegions(SNPhood.o), annotationBins(SNPhood.o))
     
+    binAnnotation = annotationBins(SNPhood.o)
+    verticalLinePos = SNPhood.o@internal$plot_origBinSNPPosition
+    rownamesPlot = SNPhood.o@internal$plot_labelBins
+    xAxisLabels = .getBinLabelXAxis(SNPhood.o)
+
     
     # Init if never done before
     if (testNull(SNPhood.o@additionalResults$clustering)) {
@@ -1310,14 +1302,15 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
         resultsMissing = ifelse(testNull(SNPhood.o@additionalResults$clustering[[readGroup]][[dataset]][[paste0("nClusters",nClusters)]]), TRUE, FALSE)
         if (resultsMissing) {
             if (verbose) message("Performing clustering for ", nClusters, " clusters.")
-            SNPhood.o@additionalResults$clustering[[readGroup]][[dataset]][[paste0("nClusters",nClusters)]] = .pamClustering(SNPhood.o, target.m, nClusters, ...)
+            SNPhood.o@additionalResults$clustering[[readGroup]][[dataset]][[paste0("nClusters",nClusters)]] = .pamClustering(target.m, nBinsCur, binAnnotation, verticalLinePos, rownamesPlot, xAxisLabels, nClusters, ...) 
             
         }
         
         # Plot, but only selected clusters
-        clusterMatrix = SNPhood.o@additionalResults$clustering[[readGroup]][[dataset]][[paste0("nClusters",nClusters)]]$clusteringMatrix[[1]]
-        assert(checkNull(clustersToPlot), checkSubset(clustersToPlot, unique(clusterMatrix$cluster)))
-        p = .generateClusterPlot(clusterMatrix, SNPhood.o, clustersToPlot = clustersToPlot)
+        clusterMatrix.df = SNPhood.o@additionalResults$clustering[[readGroup]][[dataset]][[paste0("nClusters",nClusters)]]$clusteringMatrix[[1]]
+        assert(checkNull(clustersToPlot), checkSubset(clustersToPlot, unique(clusterMatrix.df$cluster)))
+
+        p = .generateClusterPlot(clusterMatrix.df, rownamesPlot, nBinsCur, verticalLinePos, xAxisLabels, clustersToPlot = clustersToPlot)
         print(p)
         
     }
@@ -1350,10 +1343,9 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
 #' @import checkmate
 plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL, verbose = FALSE) {
     
+    # TODO: This function returns only a list and not like the others a SNPhood object. Make consistent
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
-    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
-    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -1390,9 +1382,7 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
     
     if (!testNull(fileToPlot)) dev.off()  
     
-    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
-
-    plots.l
+    invisible(plots.l)
 }
 
 #' @import checkmate
@@ -1480,10 +1470,10 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
 #' @import checkmate
 plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot = NULL, printPlot = TRUE, verbose = FALSE) {
     
+    # TODO: This function returns only a list and not like the others a SNPhood object. Make consistent
+    
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
-    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
-    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -1504,7 +1494,7 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
 #         type = allGenotypes
 #     }
     
-    assertSubset(names(SNPhood.o@additionalResults$genotype),choices = c("strongGenotypes","weakGenotypes","invariantGenotypes","clustering"))
+    assertSubset(names(SNPhood.o@additionalResults$genotype),choices = c("strongGenotypes", "weakGenotypes", "invariantGenotypes", "clustering"))
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
     if (!testNull(fileToPlot)) {
@@ -1513,9 +1503,8 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
     
     nElems = length(SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[1]]$clusteringMatrix)
     
-    
-    
-    plotsGenotypes = lapply(1:length(SNPhood.o@additionalResults$genotype$clustering), function(x) vector("list",nElems))
+
+    plotsGenotypes = lapply(1:length(SNPhood.o@additionalResults$genotype$clustering), function(x) vector("list", nElems))
 
     header = c("strong","weak")
     
@@ -1573,9 +1562,7 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
     
     if (!testNull(fileToPlot)) dev.off()
     
-    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
-
-    plotsGenotypes
+    invisible(plotsGenotypes)
 }
 
 
@@ -1603,8 +1590,7 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL, ve
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
-    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
-    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+
     
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
@@ -1703,9 +1689,7 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL, ve
         print(p)
     }
     
-    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
-    
-    return(p)
+    return(invisible(p))
 }
 
 
@@ -1750,17 +1734,25 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
         stop(.getErrorMessageReadGroupSpecificty())
     }
     
+    nBinsCur = nBins(SNPhood.o)
+    readGroupName = annotationReadGroups(SNPhood.o)
     
-    countsObj <- counts(SNPhood.o, type = "binned")$allReadGroups
+    countsObj <- counts(SNPhood.o, type = "binned", readGroup = readGroupName)
+    
     genotypeAssociated <- annotation(SNPhood.o)$genotype$external
-    rownames(genotypeAssociated) <- rownames(annotation(SNPhood.o)$genotype$external)
-    finalCounts <- lapply(countsObj, function(x) x[match(rownames(genotypeAssociated), 
-                                                         annotationRegions(SNPhood.o)), ])
-    
-    if (ncol(genotypeAssociated) < 4) {
-        stop("Cannot summarize genotypes because no genotypoes have been added to slot annotation$genotype$external. Has the function associateGenotypes be executed?")
+    genotypesFound = FALSE
+    if (!testNull(genotypeAssociated)) {
+        rownames(genotypeAssociated) <- rownames(annotation(SNPhood.o)$genotype$external)
+        finalCounts <- lapply(countsObj, function(x) x[match(rownames(genotypeAssociated), 
+                                                             annotationRegions(SNPhood.o)), ])
+        
+        if (ncol(genotypeAssociated) >= 4) genotypesFound = TRUE
+   
     }
     
+    if (!genotypesFound) {
+        stop("Cannot summarize genotypes because no genotypoes have been added to slot annotation$genotype$external. Has the function associateGenotypes be executed?")
+    }
     
     onlyGenotypes <- genotypeAssociated[,4:length(genotypeAssociated)] # Getting the columns with only genotypes
     onlyGenotypes <- as.matrix(onlyGenotypes) 
@@ -1789,12 +1781,10 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     invariantGenotypes = apply(filterdGenotypes[invariantGenotypes,],1,unique)
     naGenotypes = apply(filterdGenotypes,1,function(x) all(!is.na(x)))
     filterdGenotypes = filterdGenotypes[naGenotypes,]
+
     
-    SNPhood.o@readCountsBinned[[annotationReadGroups(SNPhood.o)]] <- lapply(SNPhood.o@readCountsBinned[[annotationReadGroups(SNPhood.o)]], 
-                                                                            function(x){ row.names(x) <- rownames(onlyGenotypes); x})
-    
-    refinedIndividualFiles <- lapply(SNPhood.o@readCountsBinned[[annotationReadGroups(SNPhood.o)]], 
-                                     function(x) x[match(row.names(filterdGenotypes), row.names(x)), ])
+    refinedIndividualFiles <- lapply(countsObj, function(x){ row.names(x) <- rownames(onlyGenotypes); x})
+    refinedIndividualFiles <- lapply(refinedIndividualFiles, function(x) x[match(row.names(filterdGenotypes), row.names(x)), ])
     refinedIndividualFiles <- refinedIndividualFiles[apply(onlyGenotypes,2,function(x) !all(is.na(x)))]
     
     if (normalize) {
@@ -1811,9 +1801,9 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     zeros <- c()
     ones <- c()
     twos <- c()
-    strong_genotypes <- matrix(data = ,nrow = nrow(filterdGenotypes),ncol = nBins(SNPhood.o))
+    strong_genotypes <- matrix(data = ,nrow = nrow(filterdGenotypes),ncol = nBinsCur)
     
-    weak_genotypes <- matrix(data = ,nrow = nrow(filterdGenotypes),ncol = nBins(SNPhood.o))
+    weak_genotypes <- matrix(data = ,nrow = nrow(filterdGenotypes),ncol = nBinsCur)
     
     genotype_weak <- c()
     for (i in 1:nrow(filterdGenotypes)) {
@@ -1844,7 +1834,7 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     levels(strong_genotypes$genotype_strong) <- c(0, 1, 2)
     weak_genotypes$genotype_weak <- factor(weak_genotypes$genotype_weak)
     levels(weak_genotypes$genotype_weak) <- c(0, 1, 2)
-    binNames <- paste0("bin_",1:nBins(SNPhood.o))
+    binNames <- paste0("bin_",1:nBinsCur)
     colnamesGenotypes = c(binNames,"genotype")
     colnames(strong_genotypes) = colnamesGenotypes
     colnames(weak_genotypes) = colnamesGenotypes
@@ -1855,10 +1845,16 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     
     if (!is.null(fileToPlot)) pdf(fileToPlot)
     
+    binAnnotation = annotationBins(SNPhood.o)
+    verticalLinePos = SNPhood.o@internal$plot_origBinSNPPosition
+    rownamesPlot = SNPhood.o@internal$plot_labelBins
+    xAxisLabels = .getBinLabelXAxis(SNPhood.o)
+    
+    
     for (nClusters in nClustersVec) {
         if (verbose) message("Performing clustering for ", nClusters, " clusters.")
-        SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[paste0("nClusters",nClusters)]] = .pamClustering(SNPhood.o, as.matrix(strong_genotypes[,1:nBins(SNPhood.o)]), nClusters)
-        SNPhood.o@additionalResults$genotype$clustering$weakGenotypes[[paste0("nClusters",nClusters)]]   = .pamClustering(SNPhood.o, as.matrix(weak_genotypes  [,1:nBins(SNPhood.o)]), nClusters)
+        SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[paste0("nClusters",nClusters)]] = .pamClustering(as.matrix(strong_genotypes[,1:nBinsCur]), nBinsCur, binAnnotation, verticalLinePos, rownamesPlot, xAxisLabels, nClusters)
+        SNPhood.o@additionalResults$genotype$clustering$weakGenotypes[[paste0("nClusters",nClusters)]]   = .pamClustering(as.matrix(weak_genotypes  [,1:nBinsCur]), nBinsCur, binAnnotation, verticalLinePos, rownamesPlot, xAxisLabels, nClusters)
     }
     
     print(SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[paste0("nClusters",nClusters)]][["plots"]])

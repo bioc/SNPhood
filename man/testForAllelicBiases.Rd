@@ -6,7 +6,7 @@
 \usage{
 testForAllelicBiases(SNPhood.o, readGroups, confLevel = 0.95,
   nullHypothesisFraction = 0.5, calcBackgroundDistr = TRUE,
-  nRepetitions = 100, pValuesToTestBackground = c(1e-04, 5e-04, 0.001,
+  nRepetitions = 100, pValuesToTestBackground = c(0.0001, 0.0005, 0.001,
   0.005, seq(0.01, 1, 0.01)), verbose = TRUE)
 }
 \arguments{

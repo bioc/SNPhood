@@ -1,11 +1,13 @@
 
 .onAttach <- function(libname, pkgname) {
     
-    lengthDashes = 146
+    lengthDashes = 114
     message = paste0("\n",
                      paste0(rep("-",lengthDashes),collapse = ""),
                      "\n",
-                     "| Welcome to the SNPhood package. See the Vignette (type browseVignettes(\"SNPhood\") and the help pages for how to use SNPhood for your analyses. |\n",
+                     "|       Welcome to the SNPhood package and thank you for using our software. This is SNPhood version ", packageVersion("SNPhood"),".      |\n",
+                     "| See the vignettes (type browseVignettes(\"SNPhood\") or the help pages for how to use SNPhood for your analyses. |\n",
+                     "|       Thank you for using our software. Please do not hesitate to contact us if there are any questions.       |\n",
                      paste0(rep("-",lengthDashes),collapse = ""),
                      "\n"
                      )

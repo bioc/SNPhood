@@ -14,6 +14,9 @@ output:
   BiocStyle::html_document
 ---
 
+# Important note regarding the SNPhood version
+
+*SNPhood* is under active development, and we highly recommend using the newest available version. In particular, we recommend using the devel branch of Bioconductor / *SNPhood* to make sure you use the latest features and bugfixes. If you are not sure how to switch to the devel branch, contact us, we are happy to help!
 
 # Motivation, Necessity, Package Scope and Limitations
 

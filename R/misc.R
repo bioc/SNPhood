@@ -1027,9 +1027,10 @@
 #' @importFrom cluster clara silhouette sortSilhouette
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-.pamClustering  = function(SNPhood.o, target.m, nClustersVec,...){
+
+
+.pamClustering  = function(target.m, nCols, binAnnotation, verticalLinePos, rownamesPlot, xAxisLabels, nClustersVec, ...) {
     
-    .checkObjectValidity(SNPhood.o)
     assertMatrix(target.m, any.missing = FALSE, min.rows = 1, min.cols = 1)
     assertIntegerish(nClustersVec, lower = 2, any.missing = FALSE, min.len = 1)   
     
@@ -1056,21 +1057,21 @@
         clusterplot.df = merge(x = pam.clusters.m, y = target.m, by = "row.names")
         clusterplot.df = clusterplot.df[, -1]
         
-        colnames(clusterplot.df) = c("cluster", annotationBins(SNPhood.o))
+        colnames(clusterplot.df) = c("cluster", binAnnotation)
         clusterplot.df = clusterplot.df[order(clusterplot.df$cluster, decreasing = TRUE),]
         
         # Collect results   
         avgSilInfo = c(avgSilInfo, .pamClustering$silinfo$avg.width)
         clusterplot.list[[i]] =  clusterplot.df
-        q[[i]] = .generateClusterPlot(clusterplot.df, SNPhood.o, clustersToPlot = NULL)
         
-        
+        q[[i]] = .generateClusterPlot(clusterplot.df, rownamesPlot, nCols, verticalLinePos, xAxisLabels, clustersToPlot = NULL, ...)
+  
     }
     
     res.l = list(clusterplot.list, avgSilInfo, q)
     names(res.l) = c("clusteringMatrix","averageSilhouette","plots")
     
-    return(res.l)
+    return(invisible(res.l))
     
 }
 
@@ -1078,10 +1079,12 @@
 #' @importFrom lattice levelplot panel.levelplot panel.abline
 #' @importFrom grDevices gray
 #' @import checkmate 
-.generateClusterPlot <- function(clusterplot.df, SNPhood.o, clustersToPlot = NULL) {
+
+.generateClusterPlot <- function(clusterplot.df, rownamesPlot, nColumns, verticalLinePos, xAxisLabels, clustersToPlot = NULL, ...) {
     
-    .checkObjectValidity(SNPhood.o)
-    assertDataFrame(clusterplot.df, min.rows = 1, ncols = nBins(SNPhood.o) + 1)
+    assertInt(nColumns, lower = 1)
+    
+    assertDataFrame(clusterplot.df, min.rows = 1, ncols = nColumns + 1)
     assert(checkNull(clustersToPlot), checkSubset(clustersToPlot, unique(clusterplot.df$cluster)))
     
     if (testNull(clustersToPlot)) {
@@ -1094,7 +1097,7 @@
     clusterplot.df = clusterplot.df[order(clusterplot.df$cluster, decreasing = TRUE),]
     clusterplot.df = t(clusterplot.df[, -1])
     
-    rownames(clusterplot.df) = SNPhood.o@internal$plot_labelBins
+    rownames(clusterplot.df) = rownamesPlot
     colnames(clusterplot.df) = 1:ncol(clusterplot.df)
     
     nNumbersYAxis = 5
@@ -1103,12 +1106,12 @@
     colors = gray(100:0/100) # white for low read counts
     #colors = gray(0:100/100) # black for low read counts
     
-    p = levelplot(as.matrix(clusterplot.df), xlab = .getBinLabelXAxis(SNPhood.o) , ylab = "User regions",
+    p = levelplot(as.matrix(clusterplot.df), xlab = xAxisLabels , ylab = "User regions",
                   scales = list(y = list(at = yPos)),
                   col.regions = colors, aspect = "fill", 
                   panel = function(...) {
                       panel.levelplot(...)
-                      panel.abline(v = SNPhood.o@internal$plot_origBinSNPPosition , type = "o", pch = 22, lty = 2, col = "red")
+                      panel.abline(v = verticalLinePos , type = "o", pch = 22, lty = 2, col = "red")
                   })
     
     p
@@ -1142,6 +1145,10 @@
     assertVector(iteration, any.missing = FALSE, min.len = 1)
     
     res.l = list()
+    
+    if (nCores > multicoreWorkers()) {
+        nCores = multicoreWorkers()
+    }
 
     if (nCores > 1) {
         
@@ -1149,8 +1156,8 @@
             bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores))
 
         }, error = function(e) {
-            warning("An error occured while executing the function with multiple CPUs. Trying again using only only one CPU...")
-            lapply(iteration, functionName, ...)
+            warning("An error occured while executing the function with ", nCores," CPUs. Try one last time in parallel...")
+            #lapply(iteration, functionName, ...)
         }
         )
         
@@ -1172,9 +1179,6 @@
         res.l = lapply(iteration, functionName, ...)
     }
 
-    if (nCores > multicoreWorkers()) {
-        nCores = multicoreWorkers()
-    }
     
     if (verbose) message(" Finished execution using ",nCores," cores.")
     .printExecutionTime(start.time, verbose = TRUE)
@@ -1245,16 +1249,3 @@
     
 }
 
-    
-    # Important: Append the size factors because both signal and input may be used multiple times with other signals and input files, respectively, each of which translates to a different size factor
-    # Change the name so that it can be traced back to the corresponding signal data file
-    
-    # Switch so that the mapping is composed of a signal and the corresponding input datafile always
-    
-    # Save the size factor. Reverse the names here to make the mapping properly. This is correct and verified!
-    # TODO check if needed
-    #names(sizeFactors.vec) = rev(names(sizeFactors.vec))     
-    #SNPhood.o@internal$sizeFactors[[alleleCur]] [[individualCur]]   = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[individualCur]]  , sizeFactors.vec[inputFileSetCur])
-    #SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]] = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]], sizeFactors.vec[individualCur])
-    
-    
