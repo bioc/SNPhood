@@ -42,10 +42,15 @@ plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, co
     assertChoice(corMeasure, choices = c("pearson", "spearman", "kendall"))
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
     }
     
     if (!is.null(fileToPlot)) pdf(fileToPlot)
+    
+    if (nDatasets(SNPhood.o) == 1) {
+        warning("Only one dataset defined, cannot do correlation analysis")
+        return(SNPhood.o)
+    }
     
     nRowsMatrix = nDatasets(SNPhood.o)
     nColsMatrix = nRegions(SNPhood.o)
@@ -97,18 +102,18 @@ plotAndCalculateCorrelationDatasets <- function(SNPhood.o, fileToPlot = NULL, co
     
     for (i in seq_len(ncol(M2))) {
         
-        type = SNPhood.o@annotation$files[[colnames(M2)[i]]]$type
-        stopifnot(!is.null(type))
+        typeCur = SNPhood.o@annotation$files[[colnames(M2)[i]]]$type
+        stopifnot(!is.null(typeCur))
         
-        if (type == "signal") {
+        if (typeCur == "signal") {
             index_signal = index_signal + 1
             colnamesNew.vec = c(colnamesNew.vec, paste0("S", index_signal))
             
-        } else if (type == "input")  {
+        } else if (typeCur == "input")  {
             index_input = index_input + 1
             colnamesNew.vec = c(colnamesNew.vec, paste0("I", index_input))
         } else {
-            stop("Unknown type ", type," in slot annotation$files[[", i,"]], object inconsistent")
+            stop("Unknown type ", typeCur," in slot annotation$files[[", i,"]], object inconsistent")
         }
     } 
     
@@ -222,7 +227,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
         pdf(fileToPlot)
     }
     
@@ -315,7 +320,7 @@ plotAllelicBiasResults <- function(SNPhood.o, dataset = 1, region = 1, signThres
     gB$widths <- widthPlot
     
     # Produce grid
-    grid.arrange(gA, gB, gC, nrow = 3, newpage = TRUE)
+    grid.arrange(gA, gB, gC, nrow = 3, newpage = FALSE)
     
     if (!testNull(fileToPlot)) dev.off()  
     
@@ -431,7 +436,7 @@ plotBinCounts <- function(SNPhood.o, regions = 1, readGroups = NULL, datasets = 
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
         pdf(fileToPlot)
     }
     
@@ -939,7 +944,7 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
         pdf(fileToPlot)
     }
     
@@ -1215,6 +1220,209 @@ plotRegionCounts <- function(SNPhood.o, regions = NULL, datasets = NULL, readGro
 }
 
 
+#' Summarize the allelic bias analysis across SNP regions and bins and visualize some of the results.
+#' 
+#' \code{plotAndSummarizeAllelicBiasTest} summarizes the allelic bias test across SNP regions and bins by calculating various summary statistics. 
+#' See the Vignette for more details. TODO
+#' @template SNPhood
+#' @template signThreshold
+#' @template fileToPlot
+#' @return A named list with various elements, each of which summarizes the allelic bias tests with a different focus. TODO
+#' @examples
+#' data(SNPhood, package="SNPhood")
+#' SNPhood.o = testForAllelicBiases (SNPhood.o, readGroups = c("maternal", "paternal"))
+#' SNPhood.o = plotAndSummarizeAllelicBiasTest(SNPhood.o)
+#' @export
+#' @import checkmate
+#' @importFrom grid grid.draw
+## #' # @importFrom VennDiagram venn.diagram
+#' @importFrom grDevices pdf dev.off
+#' @importFrom ggplot2 geom_histogram ggtitle scale_x_continuous geom_bar geom_line
+plotAndSummarizeAllelicBiasTest  <- function(SNPhood.o, signThreshold = 0.05, fileToPlot = "summaryAllelicBias.pdf") {
+    
+    # Check types and validity of arguments    
+    .checkObjectValidity(SNPhood.o)
+    assertNumber(signThreshold, lower = 0, upper = 1)  
+    
+    assertCharacter(fileToPlot, min.chars = 1, len = 1)
+    assertDirectoryExists(dirname(fileToPlot), access = "r")
+    pdf(fileToPlot)
+
+   
+    if (!testList(SNPhood.o@additionalResults$allelicBias, min.len = 4, any.missing = FALSE)) {
+        stop("Could not find the results of the allelic bias test. Did you run the function testForAllelicBiases before?")
+    }
+    
+    assertInt(length(SNPhood.o@additionalResults$allelicBias$pValue), lower = 1)
+    
+    summary.l <-  list()
+    
+    signSNPperInd_list  <- lapply(SNPhood.o@additionalResults$allelicBias$pValue, function(x) apply(x, 1, function(y) length(which(y < signThreshold))))
+    signSNPperInd.m     <- matrix(unlist(signSNPperInd_list), ncol = length(SNPhood.o@additionalResults$allelicBias$pValue), byrow = FALSE)
+    
+    colnames(signSNPperInd.m) <- names(SNPhood.o@additionalResults$allelicBias$pValue)
+    rownames(signSNPperInd.m) <- mcols(SNPhood.o@annotation$regions)$annotation
+    
+    
+    # 1. For how many bins per region is the p value significant per individual?    
+    summary.l[["nSignificantBinsPerRegion"]]  <- signSNPperInd.m
+    
+    data.df = as.data.frame(summary.l[["nSignificantBinsPerRegion"]])
+    data.df = melt(data.df)
+    colnames(data.df) = c("Dataset", "value")
+    mainLabel = paste0("Number of significant bins per region\nfor regions with at least one significant bin")
+    
+    p1 <- ggplot(data.df, aes_(~value, fill = ~Dataset))  + geom_histogram(binwidth = 1)
+    p1 <- p1 + .getThemeForGGPlot()
+    p1 <- p1 + ggtitle(mainLabel)  
+    p1 <- p1 + .getYLab("Count") #+ .getXLab("Number of significant bins per region")
+    p1 <- p1 + scale_x_continuous(name = "Number of significant bins per region", limits = c(1, nBins(SNPhood.o)))
+    print(p1)    
+
+    
+    #2. Put the rank so one can see more easily the signficant ones
+    summary.l[["nSignificantBinsPerRegion_rank"]] <- apply(signSNPperInd.m, 2, function(x) rank(x, ties.method = "min"))
+    
+    
+    # 3. Which region is the most significant across all individuals?
+    summary2.df <- as.data.frame(rowSums(signSNPperInd.m))
+    colnames(summary2.df) = c("allDatasets")
+    summary2.df = summary2.df[order(summary2.df, decreasing = TRUE),, drop = FALSE]
+    
+    summary.l[["significantBinsPerRegionAcrossDatasets_sum"]] = summary2.df
+    
+    
+    # 4. Analyze which regions have at least a particular number of significant bins across all individuals (common SNPs)
+    commonRegions = list()
+    for (threshold in 0:nBins(SNPhood.o)) {
+        
+        indexList = threshold + 1
+        index.l = list()
+        for (i in 1:nDatasets(SNPhood.o)) {    
+            index.l[[i]] = which(signSNPperInd.m[, i] >= threshold)
+            #cat ("Individual ", names(SNPhood.o@annotation$files[i]), ": ", length(index.l[[i]]),"\n")  
+            
+        }   
+        
+        commonRegions[[paste0(threshold, "+")]] = Reduce(intersect, index.l)
+    }  
+    
+    summary.l[["commonRegionsWithAllelicBiasAcrossDatasets"]] = commonRegions
+    
+    data.df = data.frame(value = 0:nBins(SNPhood.o), count = sapply(commonRegions, length), stringsAsFactors = FALSE)
+    
+    mainLabel = paste0("Regions with significant bins that are shared across all individuals")
+    
+    p2 <- ggplot(data.df, aes_(~value, ~count))  + geom_bar(stat = "identity")
+    p2 <- p2 + .getThemeForGGPlot()
+    p2 <- p2 + ggtitle(mainLabel)  
+    p2 <- p2 + .getYLab("Number of regions that share the minimum number of\n significant bins per region across all individuals")
+    p2 <- p2 + scale_x_continuous(name = "Minimal number of significant bins per individual", limits = c(1, nBins(SNPhood.o)))
+    
+    print(p2)
+
+    
+    # 5. Analyze the significance across the bin level, Which bins show the most significance?
+    signSNPperIndBins.l  <- lapply(SNPhood.o@additionalResults$allelicBias$pValue, function(x) apply(x, 2, function(y) length(which(y < signThreshold))))
+    signSNPperIndBins.m     <- matrix(unlist(signSNPperIndBins.l), ncol = length(SNPhood.o@additionalResults$allelicBias$pValue), byrow = FALSE)
+    
+    colnames(signSNPperIndBins.m) <- annotationDatasets(SNPhood.o)
+    rownames(signSNPperIndBins.m) <- SNPhood.o@annotation$bins
+    
+    summary.l[["frequencySignificancePerBin"]]  <- signSNPperIndBins.m
+    
+    data.df = as.data.frame(signSNPperIndBins.m)
+    data.df$bin = seq_len(nBins(SNPhood.o))
+    data.melted.df = melt(data.df, id.vars = "bin")
+    colnames(data.melted.df) = c("Bin", "Dataset", "Count")
+    
+    mainLabel = paste0("Number of significant results per bin for each dataset")
+    p3 <- ggplot(data.melted.df, aes_(~Bin, ~Count, color = ~Dataset))  + geom_line()
+    p3 <- p3 + .getThemeForGGPlot()
+    p3 <- p3 + ggtitle(mainLabel)  
+    p3 <- p3 + .getYLab("Number of regions with significance") + xlab(.getBinLabelXAxis(SNPhood.o))
+    p3 <- p3 + .getBinAxisLabelsForGGPlot(SNPhood.o@internal$plot_labelBins)
+    p3 <- p3 + .getVerticalLineForGGPlot(SNPhood.o@internal$plot_origBinSNPPosition)
+    print(p3)
+
+    
+    # 6. Summarize across datasets
+    summary.l[["frequencySignificancePerBinSummaryAcrossDatasets"]]  <- rowSums(signSNPperIndBins.m)
+    
+    SNPhood.o@additionalResults$allelicBias$summary = summary.l
+    
+    
+    # How many SNPs are homozygous?
+    
+    
+    # TODO: check if this is correct and useful, when is a SNP heterozygous?
+    
+    # Which ones are heterozygous across all SNPs?
+    # indexSharedHeterozygous = which(rowSums(heterozygous.m) == nDatasets(SNPhood.o))
+    # if (length(indexSharedHeterozygous) > 0) {
+    #     heterozygous.m[indexSharedHeterozygous, ncol(heterozygous.m)] = 1
+    # }
+    # 
+    # nHeterozygousSNPsShared = length(indexSharedHeterozygous)
+    # 
+    # 
+    # res.l = list()
+    # for (i in 1:nDatasets(SNPhood.o)) {
+    #     res.l[[i]] = which(SNPhood.o@additionalResults$allelicBias$summary$nSignificantBinsPerRegion[indexSharedHeterozygous,i] > 0)
+    # }
+    # 
+    # names(res.l) = annotationDatasets(SNPhood.o)
+    # 
+    # 
+    # fdr.vec = sapply(SNPhood.o@additionalResults$allelicBias$FDR_results, FUN = function(x) {
+    #     max(x$FDR[which(x$pValueThreshold <= signThreshold)])
+    # })
+    # 
+    # mainLabel = paste0("Number of SNPs with at least one significant bin\n",  
+    #                    "out of the ", nHeterozygousSNPsShared, " shared heterozygous SNPs\n",
+    #                    "(significance threshold: ",signThreshold, ", corresponding mean FDR ~ ",round(100 * mean(fdr.vec),1), "%)"
+    # )
+    # 
+    # doVenn = FALSE
+    # if (doVenn) {
+    #     
+    #     venn.plot <- venn.diagram(
+    #         x = res.l,
+    #         filename = NULL,
+    #         scaled = TRUE,
+    #         ext.text = TRUE,
+    #         ext.line.lwd = 2,
+    #         ext.dist = -0.15,
+    #         ext.length = 0.9,
+    #         ext.pos = -4,
+    #         inverted = TRUE,
+    #         cex = 2.5,
+    #         cat.cex = 2.5,
+    #         cat.col = brewer.pal(8,"Set1")[1:2],
+    #         cat.pos = c(5,-10),
+    #         fill = brewer.pal(8,"Set1")[1:2],
+    #         rotation.degree = 0,
+    #         main = mainLabel,
+    #         sub = NULL,
+    #         main.cex = 1.1,
+    #         sub.cex = 1
+    #     )
+    #     
+    #     
+    #     # Finally, write all to the summary PDF file
+    #     
+    #     # VENN diagram
+    #     grid.draw(venn.plot)
+    # }
+    
+    dev.off()
+    
+    SNPhood.o
+    
+}
+
+
+
 
 #' Clustering of read counts or enrichmens across bins for a specific dataset and read group
 #' 
@@ -1262,7 +1470,7 @@ plotAndClusterMatrix <- function(SNPhood.o, readGroup, dataset, nClustersVec = 3
     
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
     }
 
     type = ifelse(SNPhood.o@internal$countType == "enrichment", "enrichmentBinned", "binned")
@@ -1356,7 +1564,7 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
     
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
     }
     
     # Retrieve the clustering results
@@ -1393,7 +1601,7 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
     }
     
     PamObj = clusteringResults
@@ -1451,10 +1659,8 @@ plotClusterAverage <- function(SNPhood.o, readGroup, dataset, fileToPlot = NULL,
 #' @param printBinLabels Logical(1). Default TRUE. Should the bin labels be printed? 
 #' If multiple clusters are plotted simultaenously, bin labels might overlap, in which case \code{printBinLabels} can be set to FALSE.
 #' @template fileToPlot
-#' @param printPlot Logical(1). Default TRUE. Should the plots be printed? Only relevant if \code{fileToPlot} is set to NULL; otherwise, the plots
-#' are always printed to the output file.
+#' @template printPlot
 #' @template verbose_FALSE
-#' 
 #' @template ggplotReturn
 #' @export
 #' @seealso \code{\link{plotAndCalculateWeakAndStrongGenotype}}
@@ -1498,7 +1704,7 @@ plotGenotypesPerCluster = function(SNPhood.o, printBinLabels = TRUE, fileToPlot 
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
     }
     
     nElems = length(SNPhood.o@additionalResults$genotype$clustering$strongGenotypes[[1]]$clusteringMatrix)
@@ -1609,7 +1815,7 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL, ve
     }
     
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
         pdf(fileToPlot)
     }
     
@@ -1693,6 +1899,88 @@ plotGenotypesPerSNP <- function(SNPhood.o, regions = NULL, fileToPlot = NULL, ve
 }
 
 
+
+#' Graphically summarize the results of the allelic bias analysis for a specific dataset and region.
+#'
+#' \code{plotAllelicBiasResults} graphically summarizes the results of the allelic bias analysis for a specific dataset and region.
+
+#' @template SNPhood
+#' @template dataset
+#' @param FDRThreshold Numeric(1) or NULL. Default NULL. If set to a value between 0 and 1, a horizontal line will be drawn in the FDR summary plot
+#' to indicate at which p-value threshold the FDR reaches the user-defined value. Additionally, the maximum p-value threshold from the FDR summary
+#' data will be printed for which thr FDR is below the specified threshold.
+#' @template fileToPlot
+#' @template verbose_FALSE
+#' @template printPlot
+#' @template ggplotReturn
+#' @examples
+#' data(SNPhood.o, package="SNPhood")
+#' SNPhood.o = testForAllelicBiases(SNPhood.o, readGroups = c("maternal", "paternal"))
+#' # Plot FDR results for first dataset
+#' plotFDRResults(SNPhood.o, annotationDatasets(SNPhood.o)[1], FDRThreshold = NULL, fileToPlot = NULL)
+#' 
+#' # Plot FDR results for second dataset, save in file and also detemrine p-value treshold for which the FDR is below 10%
+#' plotFDRResults(SNPhood.o, annotationDatasets(SNPhood.o)[1], FDRThreshold = 0.1, fileToPlot = "FDR_summary.pdf")
+#' 
+#' @export
+#' @import checkmate
+#' @importFrom grDevices pdf dev.off
+#' @importFrom ggplot2 ggtitle aes geom_line geom_hline
+
+plotFDRResults <- function(SNPhood.o, dataset, FDRThreshold = NULL, fileToPlot = NULL, printPlot = TRUE, verbose = FALSE) {
+    
+    # Check types and validity of arguments    
+    assertFlag(verbose)
+    .checkObjectValidity(SNPhood.o, verbose = verbose)
+    disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
+    SNPhood.o@internal$disableObjectIntegrityChecking = TRUE
+    
+    dataset = .checkAndConvertDatasetArgument(SNPhood.o, dataset, nullAllowed = FALSE, maxLength = NULL, returnNames = TRUE) 
+    
+    
+    assert(checkNull(FDRThreshold), checkNumber(FDRThreshold, lower = 0, upper = 1))
+    assert(checkNull(fileToPlot), 
+           checkCharacter(fileToPlot, min.chars = 1, any.missing = FALSE, len = 1))
+    
+    if (!testNull(fileToPlot)) {
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
+    }
+
+    FDR_individual = results(SNPhood.o, type = "allelicBias", elements = "FDR_results")[[dataset]]
+
+    if (is.null(FDR_individual)) {
+        stop("FDR results could not be found")
+    }
+  
+    mainLabel = paste0("FDR summary results for dataset ", dataset)
+    p <- ggplot(FDR_individual, aes_(~pValueThreshold, ~FDR))  + geom_line()
+    p <- p + .getThemeForGGPlot()
+    p <- p + ggtitle(mainLabel)  
+    p <- p + .getYLab("FDR") + .getXLab("p-value threshold") 
+    
+    if (!is.null(FDRThreshold)) {
+        p <- p + geom_hline(yintercept = FDRThreshold, color = "red") 
+        
+        signThresholdFDR_individual = FDR_individual$pValueThreshold[which.min(FDR_individual$FDR < FDRThreshold)]
+        message("Maximal p-value that is below specified FDR threshold of ", FDRThreshold, ": ", signThresholdFDR_individual)
+    }
+    
+    
+    if (!testNull(fileToPlot)) {
+        pdf(fileToPlot)
+        print(p)
+        dev.off()
+        
+    } else {
+        if (printPlot) print(p)
+    }
+    
+    SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
+    
+    return(invisible(p))
+    
+}
+
 #' Visualizes and calculates strong and weak genotypes.
 #' 
 #' The function \code{plotAndCalculateWeakAndStrongGenotype} finds the strongest and weakest genotypes based on reads extracted around each region. Strong and weak genotypes are found using the reads extracted from SNPhood and their corresponding genotypes as found by the function \code{associateGenotypes}
@@ -1727,7 +2015,7 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     
     assert(checkNull(fileToPlot), checkCharacter(fileToPlot, min.chars = 1, len = 1))
     if (!testNull(fileToPlot)) {
-        assertDirectory(dirname(fileToPlot), access = "r")
+        assertDirectoryExists(dirname(fileToPlot), access = "r")
     }
     
     if (nReadGroups(SNPhood.o) > 1) {
@@ -1910,16 +2198,12 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
     } else {
         binPosMod[setdiff(c(1:length(binPos)), indexesToKeep)] = ""
         
-        posNew  = c(as.numeric(names(binPosMod)),40.5)
+        posNew  = c(as.numeric(names(binPosMod)),(nBinsCur/2) + 0.5)
         labelNew = c(as.character(binPosMod),"0")
         
         return(scale_x_continuous(labels = labelNew, breaks= posNew))
     }
-    
 
-    
-
-    
 }
 
 #' @import checkmate
@@ -2025,15 +2309,28 @@ plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, normalize = TRUE, n
 
 #' @importFrom ggplot2 scale_y_continuous scale_y_discrete
 #' @importFrom scales comma
-.getYLab <- function(label, discreteScale = FALSE) {
+.getYLab <- function(label, limits = NULL, discreteScale = FALSE) {
     
     if (discreteScale) {
-        return(scale_y_discrete(name = label, labels = comma))
+        return(scale_y_discrete(name = label, limits = limits, labels = comma))
     } else {
-        return(scale_y_continuous(name = label, labels = comma))
+        return(scale_y_continuous(name = label, limits = limits, labels = comma))
     }
    
 
+}
+
+#' @importFrom ggplot2 scale_x_continuous scale_x_discrete
+#' @importFrom scales comma
+.getXLab <- function(label, limits = NULL, discreteScale = FALSE) {
+    
+    if (discreteScale) {
+        return(scale_x_discrete(name = label, limits = limits, labels = comma))
+    } else {
+        return(scale_x_continuous(name = label, limits = limits, labels = comma))
+    }
+    
+    
 }
 
 .getErrorMessageReadGroupSpecificty <- function() {

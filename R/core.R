@@ -382,7 +382,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     
     # Check types and validity of arguments    
     assertClass(ranges.gr, "GRanges") 
-    assertFile(file, access = "r")
+    assertFileExists(file, access = "r")
     assertSubset(fieldsToRetrieve, scanBamWhat(), empty.ok = FALSE)
     
     assertList(par.l, min.len = 1, all.missing = FALSE)
@@ -424,7 +424,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     .createEndSeq  <-  function(x, userRegions.gr, binSize) {
         seq.int(start(userRegions.gr)[x], end(userRegions.gr)[x], binSize) + binSize - 1
     }
-    
+
     
     # Check here: https://support.bioconductor.org/p/66050/
     
@@ -642,7 +642,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
                                         returnAsList = FALSE,
                                         iteration = results.l, 
                                         verbose = verbose,
-                                        functionName = '[[', 1)
+                                        functionName =  match.fun("[["), 1)
 
         
         # Save the read counts into the matrix
@@ -1331,13 +1331,13 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
             #.getMemoryProfile(SNPhood.o, verbose = verbose)
             
             if (verbose) message("\nFINISHED PROCESSING INDIVIDUAL\n")
-            .printExecutionTime(start_individual, verbose = TRUE)
+            .printExecutionTime(start_individual, verbose = verbose)
             
             
         }  # end for (individualCur in unique(files.df$individual[indexRowsInput.vec]))
         
         if (verbose) message("\nFINISHED PROCESSING INPUT SET ", inputFileSetCur, ".\n")
-        .printExecutionTime(start_inputSet, verbose = TRUE)
+        .printExecutionTime(start_inputSet, verbose = verbose)
         
         
     } # end for each unique set of input files
@@ -1345,7 +1345,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     if (onlyPrepareForDatasetCorrelation) {
         
         if (verbose) message("\n\nFINISHED SUCCESSFULLY WITH ALL INPUT FILES.\n")
-        .printExecutionTime(start.time, verbose = TRUE)
+        .printExecutionTime(start.time, verbose = verbose)
 
         warning("Note that you set the parameter \"onlyPrepareForDatasetCorrelation\" to TRUE. You will not be able to use any functionality except the sample correlation plots. For a full analysis, run the function again and set the parameter to FALSE.")
         
@@ -1395,6 +1395,11 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     if (integrateGenotype) {
         SNPhood.o = associateGenotypes(SNPhood.o, genotypeMapping.df, verbose)
     }
+    
+    ############################
+    # DETERMINE HETEROZYGOSITY #
+    ############################
+    SNPhood.o = .determineHeterozygosity(SNPhood.o, verbose = verbose)
 
     
     # Set the flag that we now have an object that contains all data, validity checkIng is now active
@@ -1404,7 +1409,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     #.getMemoryProfile(SNPhood.o, verbose = verbose)
     
     if (verbose) message("\n\nFINISHED SUCCESSFULLY WITH ALL INPUT FILES.\n")
-    .printExecutionTime(start.time, verbose = TRUE)
+    .printExecutionTime(start.time, verbose = verbose)
     
     message("Warnings may have occurred, as indicated. Please check them carefully with unique(warnings()).")
 
@@ -2186,8 +2191,8 @@ renameReadGroups  <-  function(SNPhood.o, newReadGroupsMapping, verbose = TRUE) 
         
         SNPhood.o@annotation$readGroups[which(SNPhood.o@annotation$readGroups  ==  oldR)] = newR
         
-        SNPhood.o@annotation$genotype$readsDerived[which(SNPhood.o@annotation$readGroups  ==  oldR)] = newR
-        
+        names(SNPhood.o@annotation$genotype$readsDerived)[which(SNPhood.o@annotation$readGroups  ==  oldR)] = newR
+
         SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested   [which(SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested    == oldR)] = newR
         SNPhood.o@additionalResults$allelicBias$parameters$readGroupsDiscarded[which(SNPhood.o@additionalResults$allelicBias$parameters$readGroupsDiscarded == oldR)] = newR
         
@@ -2248,13 +2253,20 @@ renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
         
         # SLOT ANNOTATION
         names(SNPhood.o@annotation$files)[which(names(SNPhood.o@annotation$files)  ==  oldR)] = newR
+    
         
         for (alleleCur in annotationReadGroups(SNPhood.o)) {
-            names(SNPhood.o@readCountsUnbinned[[alleleCur]])[which(names(SNPhood.o@readCountsUnbinned[[alleleCur]])     ==  oldR)] = newR
-            names(SNPhood.o@readCountsBinned[[alleleCur]])[which(names(SNPhood.o@readCountsBinned[[alleleCur]])         ==  oldR)] = newR
-            names(SNPhood.o@enrichmentBinned[[alleleCur]])[which(names(SNPhood.o@enrichmentBinned[[alleleCur]])         ==  oldR)] = newR
-            names(SNPhood.o@internal$sizeFactors[[alleleCur]])[which(names(SNPhood.o@internal$sizeFactors[[alleleCur]]) ==  oldR)] = newR 
+            
+            names(SNPhood.o@annotation$genotype$readsDerived[[alleleCur]])[which(names(SNPhood.o@annotation$genotype$readsDerived[[alleleCur]]) ==  oldR)] = newR
+            colnames(SNPhood.o@annotation$genotype$heterozygosity)[which(colnames(SNPhood.o@annotation$genotype$heterozygosity) == oldR)] = newR
+            
+            names(SNPhood.o@readCountsUnbinned[[alleleCur]])[which(names(SNPhood.o@readCountsUnbinned[[alleleCur]])       ==  oldR)] = newR
+            names(SNPhood.o@readCountsBinned[[alleleCur]])[which(names(SNPhood.o@readCountsBinned[[alleleCur]])           ==  oldR)] = newR
+            names(SNPhood.o@enrichmentBinned[[alleleCur]])[which(names(SNPhood.o@enrichmentBinned[[alleleCur]])           ==  oldR)] = newR
+            names(SNPhood.o@internal$sizeFactors[[alleleCur]])[which(names(SNPhood.o@internal$sizeFactors[[alleleCur]])   ==  oldR)] = newR 
             names(SNPhood.o@internal$readStartPos[[alleleCur]])[which(names(SNPhood.o@internal$readStartPos[[alleleCur]]) ==  oldR)] = newR
+            names(SNPhood.o@internal$readWidth[[alleleCur]])[which(names(SNPhood.o@internal$readWidth[[alleleCur]])       ==  oldR)] = newR
+            
         }
         
         if (!testNull(SNPhood.o@additionalResults$allelicBias)) {
@@ -2263,7 +2275,9 @@ renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
             names(SNPhood.o@additionalResults$allelicBias$confIntervalMax)[which(names(SNPhood.o@additionalResults$allelicBias$confIntervalMax) ==  oldR)] = newR
             names(SNPhood.o@additionalResults$allelicBias$fractionEstimate)[which(names(SNPhood.o@additionalResults$allelicBias$fractionEstimate) ==  oldR)] = newR
             names(SNPhood.o@additionalResults$allelicBias$background)[which(names(SNPhood.o@additionalResults$allelicBias$background) ==  oldR)] = newR
-        }
+            #TODO: dataset names
+            # TODO: change implementation: just have the names appear once and use [[1]] and [[2]] or so for it throughout the object
+            }
 
         
     }
@@ -2802,7 +2816,7 @@ associateGenotypes <- function(SNPhood.o, genotypeMapping, verbose = TRUE) {
     genotypeMapping = genotypeMapping[!is.na(genotypeMapping$samples),]
     
     # Check if the files all exist and are readable    
-    sapply(unique(genotypeMapping$genotypeFile), FUN = function(x) assertFile(x, access = "r"))
+    sapply(unique(genotypeMapping$genotypeFile), FUN = function(x) assertFileExists(x, access = "r"))
     
     
     # Parse VCF files
@@ -2959,7 +2973,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     
     # Check types and validity of arguments         
 
-    assertFile(file_vcf, access = "r")
+    assertFileExists(file_vcf, access = "r")
     assertCharacter(sampleNamesObject, any.missing = FALSE, min.len = 1, max.len = nDatasets(SNPhood.o))
     assertCharacter(sampleNamesFile  , any.missing = FALSE, min.len = 1, max.len = nDatasets(SNPhood.o))
     assert(checkNull(yieldSize),
@@ -3363,7 +3377,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 .BAMHeaderConsistencyChecks <- function(par.l, annotationRegions, signalFileCur, expectedReadGroups = NULL, verbose = TRUE) {
     
     assertCharacter(signalFileCur, any.missing = FALSE)
-    assertFile(signalFileCur, access = "r")
+    assertFileExists(signalFileCur, access = "r")
     assertFlag(verbose)
     
     chrSizes.df = .getGenomeData(par.l$assemblyVersion, includeChrM = TRUE)
@@ -3513,7 +3527,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     for (fileCur in files.vec) {
         
         assertCharacter(fileCur, any.missing = FALSE)
-        assertFile(fileCur, access = "r")
+        assertFileExists(fileCur, access = "r")
         
         nFilesProcessed = nFilesProcessed + 1  
         if (verbose) message("\nPROCESS FILE ", nFilesProcessed, " of ", length(files.vec), ":", fileCur)
@@ -3764,3 +3778,67 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 #SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]] = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]], sizeFactors.vec[individualCur])
 
 
+.determineHeterozygosity <- function (SNPhood.o, readGroupsToTest = c("paternal", "maternal"), takeOnlyMostAbundantOnePerReadGroup = TRUE, verbose = TRUE) {
+    
+    assertFlag(verbose)
+    assertSubset(readGroupsToTest, annotationReadGroups(SNPhood.o))
+    assertFlag(takeOnlyMostAbundantOnePerReadGroup)
+    
+    heterozygous.m = matrix(NA, ncol = nDatasets(SNPhood.o) + 1, nrow = nRegions(SNPhood.o))
+    dimnames(heterozygous.m) = list(annotationRegions(SNPhood.o), c(annotationDatasets(SNPhood.o),"shared"))
+    
+    for (i in 1:nDatasets(SNPhood.o)) {
+        
+        datasetCur = annotationDatasets(SNPhood.o)[i]
+        
+        for (j in seq_len(nRegions(SNPhood.o))) {
+            
+            genotypeDist.vec = c()
+            isNA = FALSE
+
+            for (readGroupCur in readGroupsToTest) {
+                
+                distCur = SNPhood.o@annotation$genotype$readsDerived[[readGroupCur]][[datasetCur]][,j]
+                
+                indexGenotypesPresent = which(distCur > 0)
+                
+                if (length(indexGenotypesPresent) > 0) {
+                    
+                    genotypesPresent = sort(indexGenotypesPresent, decreasing = TRUE)
+                    
+                    if (takeOnlyMostAbundantOnePerReadGroup) {
+                        genotypeDist.vec = c(genotypeDist.vec, names(genotypesPresent)[1])
+                    } else {
+                        genotypeDist.vec = c(genotypeDist.vec, names(genotypesPresent))
+                    }
+                } else {
+                    heterozygous.m[j, i] = NA
+                    isNA = TRUE
+                    break
+                }
+
+            }
+            
+            # Take most abundant genotype in each read group and check their identity
+            indexBasePairs = which(genotypeDist.vec %in% c("A", "C", "G", "T"))
+            if (!isNA) {
+                if (length(indexBasePairs) > 1) {
+                    heterozygous.m[j, i] = TRUE
+                } else {
+                    heterozygous.m[j, i] = FALSE
+                }
+            }
+           
+            
+        }
+        
+    }
+    
+    heterozygous.m[,ncol(heterozygous.m)] = rowSums(heterozygous.m, na.rm = TRUE) == (ncol(heterozygous.m) - 1)
+    
+    SNPhood.o@annotation$genotype$heterozygosity = heterozygous.m
+    
+    
+    SNPhood.o
+    
+}

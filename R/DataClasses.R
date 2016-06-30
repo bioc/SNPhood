@@ -671,6 +671,11 @@ setMethod("show",
     
     # SLOT ANNOTATION #
     
+    
+    nRows = length(object@annotation$regions)
+    nCols = length(object@annotation$bins)
+    nDatasets = length(object@annotation$files)
+    
     if (testNull(object@annotation) | testNull(names(object@annotation))) {
         
         valid = FALSE
@@ -722,59 +727,70 @@ setMethod("show",
        
         
         ## Genotype ##
-        validNames = c("readsDerived", "external")
+        validNames = c("readsDerived", "external", "heterozygosity", "mismatches")
         if (!testSubset(names(object@annotation$genotype), validNames)) {
             
-            # 1. readsDerived
-            for (i in seq_len(length(object@annotation$readGroups))) {
-                
-                if (!testSubset(names(object@annotation$genotype$readsDerived)[i], object@annotation$readGroups[i])) {
-                    valid = FALSE
-                    msg = c(msg, "The names of the read groups are incorrect for the element readsDerived in the slot \"annotation$genotype\".\n")
-                }
-                
-                for (j in seq_len(length(object@annotation$files))) {
-                    
-                    if (!testSubset(names(object@annotation$genotype$readsDerived[[i]])[j], names(object@annotation$files)[j])) {
-                        valid = FALSE
-                        msg = c(msg, "The names of the datasets are incorrect for the element readsDerived in the slot \"annotation$genotype\".\n")
-                    }
-                    
-                    if (!testMatrix(object@annotation$genotype$readsDerived[[i]][[j]], any.missing = FALSE, nrows = 4, ncols = length(object@annotation$regions))) {
-                        valid = FALSE
-                        msg = c(msg, "The genotype distribution element is invalid in the slot \"annotation$genotype$readsDerived\".\n")
-                    }
-                    
-                    if (!testSubset(rownames(object@annotation$genotype$readsDerived[[i]][[j]]), c("A","C","G","T"))) {
-                        valid = FALSE
-                        msg = c(msg, "The names of the datasets are incorrect for the element readsDerived in the slot \"annotation$genotype\".\n")
-                    }
-                    
-                    if (!testIntegerish(object@annotation$genotype$readsDerived[[i]][[j]], lower = 0, any.missing = FALSE)) {
-                        valid = FALSE
-                        msg = c(msg, "The genotype distribution element is invalid in the slot \"annotation$genotype$readsDerived\".\n")
-                    }
-                    
-                }
+            valid = FALSE
+            msg = c(msg, "Element \"genotype\" in slot annotation must must only contain the elements ",paste0(validNames, collapse = ","),".\n")
+            
+        }
+            
+        # 1. readsDerived
+        for (i in seq_len(length(object@annotation$readGroups))) {
+            
+            if (!testSubset(names(object@annotation$genotype$readsDerived)[i], object@annotation$readGroups[i])) {
+                valid = FALSE
+                msg = c(msg, "The names of the read groups are incorrect for the element readsDerived in the slot \"annotation$genotype\".\n")
             }
             
-            # 2. External
+            for (j in seq_len(length(object@annotation$files))) {
+                
+                if (!testSubset(names(object@annotation$genotype$readsDerived[[i]])[j], names(object@annotation$files)[j])) {
+                    valid = FALSE
+                    msg = c(msg, "The names of the datasets are incorrect for the element readsDerived in the slot \"annotation$genotype\".\n")
+                }
+                
+                if (!testMatrix(object@annotation$genotype$readsDerived[[i]][[j]], any.missing = FALSE, nrows = 4, ncols = length(object@annotation$regions))) {
+                    valid = FALSE
+                    msg = c(msg, "The genotype distribution element is invalid in the slot \"annotation$genotype$readsDerived\".\n")
+                }
+                
+                if (!testSubset(rownames(object@annotation$genotype$readsDerived[[i]][[j]]), c("A","C","G","T"))) {
+                    valid = FALSE
+                    msg = c(msg, "The names of the datasets are incorrect for the element readsDerived in the slot \"annotation$genotype\".\n")
+                }
+                
+                if (!testIntegerish(object@annotation$genotype$readsDerived[[i]][[j]], lower = 0, any.missing = FALSE)) {
+                    valid = FALSE
+                    msg = c(msg, "The genotype distribution element is invalid in the slot \"annotation$genotype$readsDerived\".\n")
+                }
+                
+            }
+        }
+        
+        # 2. External
+        
+        if (!testNull(object@annotation$genotype$external)) {
+        
             if (!testDataFrame(object@annotation$genotype$external, min.cols = 4, all.missing = FALSE, types = c("character", "logical"))) {
                 valid = FALSE
                 msg = c(msg, "The element genotype$external in the slot \"annotation\" must be data frame.\n")
             }
             
             validNames = c("alleleRef", "alleleAlt", "genotypeMismatch")
-            testSubset(colnames(object@annotation$genotype$external)[1:3],  validNames)
+            if (!testSubset(colnames(object@annotation$genotype$external)[1:3],  validNames)) {
+                valid = FALSE
+                msg = c(msg, "The element \"external\" in the slot \"annotation\" must contain only contain the following elements: ",paste0(validNames, collapse = ","),".\n")
+            }
            
             validNames = c()
             for (i in seq_len(length(object@annotation$files))) {
                 validNames = c(validNames, paste0(object@annotation$files[[i]]$genotypeFile,":",object@annotation$files[[i]]$genotypeFileSampleName))
             }
             
-            nCols = ncol(object@annotation$genotype$external)
-            if (nCols > 3) {
-                testSubset(colnames(object@annotation$genotype$external)[4:nCols],  validNames)
+            nColsGenotype = ncol(object@annotation$genotype$external)
+            if (nColsGenotype > 3) {
+                testSubset(colnames(object@annotation$genotype$external)[4:nColsGenotype],  validNames)
             }
             
             if (!testLogical(object@annotation$genotype$external$genotypeMismatch)) {
@@ -782,13 +798,21 @@ setMethod("show",
                 msg = c(msg, "The column genotypeMismatch in genotype$external in the slot \"annotation\" must be of type logical.\n")
             }
             
-            validValues = c("A","C","G","T",NA)
+            validValues = c("A","C","G","T", NA)
             if (!testSubset(object@annotation$genotype$external$alleleRef, validValues)) {
                 valid = FALSE
                 msg = c(msg, "The column alleleRef in genotype$external in the slot \"annotation\" must only contain the values ",paste0(validValues, collapse = ","),".\n")
             }
-
+        
         }
+        
+        #3. heterozygosity
+        if (!testMatrix(object@annotation$genotype$heterozygosity, mode = "logical", nrows = nRows, ncols = nDatasets + 1, any.missing = TRUE)) {
+            valid = FALSE
+            msg = c(msg, "The element \"heterozygosity\" in genotype in the slot \"annotation\" must be a matrix containing only logical or NA values.\n")
+        }
+
+        
         
         ## Regions ##  
         if (!testClass(object@annotation$regions, "GRanges")) {
@@ -1045,9 +1069,7 @@ setMethod("show",
                 
             }  # end if enrichment slot not empty
         }
-        
-        nRows = length(object@annotation$regions)
-        nCols = length(object@annotation$bins)
+
         
         
         anyMatrixValueMissingAllowed = FALSE
@@ -1089,12 +1111,13 @@ setMethod("show",
                     if (nCols > 1) {
                         if (!testMatrix(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, nrows = nRows, ncols = nCols)) {
                             valid = FALSE
-                            msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
+                            msg = c(msg, paste0("Slot \"readCountsBinned\" 1 must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
+
                         }
                     } else {
                         if (!testNumeric(object@readCountsBinned[[i]][[j]], any.missing = anyMatrixValueMissingAllowed, len = nRows)) {
                             valid = FALSE
-                            msg = c(msg, paste0("Slot \"readCountsBinned\" must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
+                            msg = c(msg, paste0("Slot \"readCountsBinned\" 2 must contain only matrices of read counts for each SNP and bin. However, at position [[", i,"]] [[", j,"]], a violation was found.\n") )             
                         }
                     }
                     
@@ -1105,12 +1128,12 @@ setMethod("show",
                         if (object@internal$countType == "readCountsRaw") {
                             if (!testIntegerish(object@readCountsBinned[[i]][[j]], lower = 0, any.missing = FALSE)) {
                                 valid = FALSE
-                                msg = c(msg, paste0("Slot \"readCountsBinned\" 2 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))              
+                                msg = c(msg, paste0("Slot \"readCountsBinned\" 3 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))              
                             }
                         } else {
                             if (!testNumeric(object@readCountsBinned[[i]][[j]], lower = 0, any.missing = TRUE)) {
                                 valid = FALSE
-                                msg = c(msg, paste0("Slot \"readCountsBinned\" 3 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
+                                msg = c(msg, paste0("Slot \"readCountsBinned\" 4 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
                             }
                         }
                         
@@ -1118,7 +1141,7 @@ setMethod("show",
                         
                         if (!testNumeric(object@readCountsBinned[[i]][[j]], lower = 0, upper = 1, any.missing = TRUE)) {
                             valid = FALSE
-                            msg = c(msg, paste0("Slot \"readCountsBinned\" 3 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
+                            msg = c(msg, paste0("Slot \"readCountsBinned\" 5 must contain only numerical vectors of read counts for each element. However, at position [[", i,"]] [[", j,"]], a violation was found.\n"))             
                         }
                     }
  
