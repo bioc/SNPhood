@@ -1,3 +1,14 @@
+
+
+CHANGES IN VERSION 1.2.3
+-----------------------
+
+BUG FIXES
+
+    o fixed a bug due to changes in the package checkmate in version >1.8 (function assertFunction)
+
+
+
 CHANGES IN VERSION 0.99.2
 -----------------------
 

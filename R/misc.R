@@ -22,7 +22,7 @@
 .checkAndCreateIndexFile <- function(BAMfile) {
     
     # Check types and validity of arguments     
-    assertFile(BAMfile, access = "r")  
+    assertFileExists(BAMfile, access = "r")  
     
     indexFile = paste0(BAMfile,".bai")
     
@@ -131,7 +131,7 @@
 
         # Check if readable and existent
         for (i in seq_len(length(filesToProcess.vec))) {
-            assertFile(filesToProcess.vec[i], access = "r")
+            assertFileExists(filesToProcess.vec[i], access = "r")
         }
 
         # Check if they are all BAM files
@@ -178,7 +178,7 @@
 .extractFromBAMGen <- function(regions.gr, file, fieldsToRetrieve = scanBamWhat(), flags, readGroupSpecificity = TRUE, simpleCigar = FALSE, reverseComplement = FALSE, minMapQ = 0, verbose = TRUE) {
     
     assertClass(regions.gr, "GRanges") 
-    assertFile(file, access = "r")
+    assertFileExists(file, access = "r")
     assertSubset(fieldsToRetrieve, scanBamWhat(), empty.ok = FALSE)  
     assertInteger(flags, min.len = 1, any.missing = FALSE)
     assertInt(minMapQ, lower = 0)
@@ -485,7 +485,7 @@
 #' @importFrom utils read.table
 .parseBed6File <- function(path_bedFile, headerLine = FALSE, linesToParse = -1, verbose= FALSE) {
     
-    assertFile(path_bedFile, access = "r")
+    assertFileExists(path_bedFile, access = "r")
     assertFlag(headerLine)
     assert(checkInt(linesToParse, lower = -1, upper = -1), checkInt(linesToParse, lower = 1))  
     assertFlag(verbose)
@@ -880,7 +880,7 @@
 # parseConfigFile <- function(file_configFile, verbose= FALSE, overridePar = NULL) {
 #     
 #     # Check types and validity of arguments         
-#     assertFile(file_configFile, access = "r")
+#     assertFileExists(file_configFile, access = "r")
 #     assertFlag(verbose, len = 1, any.missing = FALSE) 
 #     assert(checkNull(overridePar), checkCharacter(overridePar, any.missing = FALSE, min.chars = 1, len = 1)) 
 #     
