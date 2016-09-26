@@ -3400,37 +3400,29 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     definedChr = unique(as.character(seqnames(annotationRegions)))
     unknownChr = which(!names(chrSizes) %in% definedChr)
     if (length(unknownChr) > 0) {
-        chrSizes = chrSizes[-unknownChr]
+      chrSizes = chrSizes[-unknownChr]
     }
     
-    # Check if the chromosome sizes are identical
-    chrMismatch.vec = c()
-    for (i in seq_len(length(chrSizes))) {
-        
-        
-        if (as.numeric(chrSizes[names(chrSizes)[i]]) != chrSizes.df$size[chrSizes.df$chr == names(chrSizes)[i]]) {
-            chrMismatch.vec = c(chrMismatch.vec, names(chrSizes[i]))
-            
-            if (names(chrSizes)[i] %in% unique(as.character((seqnames(annotationRegions))))) {
-                stop("A mismatch was detected for the chromosome size of ", names(chrSizes[i])," (BAM file: ", chrSizes[i] , ", specified genome assembly: ", chrSizes.df[names(chrSizes[i]),]$size,"). ", sep = "")
-                
-            } else {
-                warning("Although no SNP regions originate from this chromosome, a mismatch was detected for the chromosome size of ", names(chrSizes[i])," (BAM file: ", chrSizes[i] , ", specified genome assembly: ", chrSizes.df[names(chrSizes[i]),]$size,"). ", sep = "")
-                
-            }
-        }
+    # Consistency checks for all chromosomes from the user regions
+    for (chrCur in definedChr) {
+      
+      # Check if defined in BAM header
+      if (!chrCur %in% names(chrSizes)) {
+        stop("Chromosome ", chrCur, "(from the user-defined regions) not defined in BAM file ", signalFileCur)
+      }
+      
+      # Check if we have the chromosome length available in the chrSizes.df object
+      if (!chrCur %in% rownames(chrSizes.df)) {
+        stop("Could not find ", chrCur," in automatically retrieved list of chromosome lengths. Only chromosomes ", paste0(rownames(chrSizes.df), collapse = ","), " are available. Please remove all references to chromosome ", chrCur, " in the BAM file.", sep = "")
+      }
+      
+      # Check if size is identical to what has been automatically retrieved
+      if (chrSizes[which(names(chrSizes) == chrCur)] != chrSizes.df[chrCur,]$size) {
+        stop("A mismatch was detected for the chromosome size of ", chrCur," (BAM file: ", chrSizes[which(names(chrSizes) == chrCur)] , ", specified genome assembly: ", chrSizes.df[chrCur,]$size,"). ", sep = "")
+      }
+      
     }
     
-    # Check if chromosome names correspond to chromosome names in user regions file
-    
-    unknownChr = which(!definedChr %in% names(chrSizes) )
-    if (length(unknownChr) > 0) {
-        stop(paste("Error with chromosome \"", definedChr[unknownChr[1]],"\" from the user-defined regions: Not defined in the BAM file (sequence names are: ", paste(names(chrSizes), collapse = ","),"). Check the chromosome names.", sep = ""))
-    }
-    
-    if (length(chrMismatch.vec) > 0 & length(intersect(definedChr, chrMismatch.vec))  > 0) {
-        stop( length(chrMismatch.vec), " mismatches with respect to the chromosome size between the BAM file and the specified genome assembly version have occured.")
-    }
     
     
     # Read groups
