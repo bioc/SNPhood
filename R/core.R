@@ -3770,7 +3770,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 #SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]] = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]], sizeFactors.vec[individualCur])
 
 
-.determineHeterozygosity <- function (SNPhood.o, readGroupsToTest = c("paternal", "maternal"), takeOnlyMostAbundantOnePerReadGroup = TRUE, verbose = TRUE) {
+.determineHeterozygosity <- function (SNPhood.o, readGroupsToTest =  annotationReadGroups(SNPhood.o), takeOnlyMostAbundantOnePerReadGroup = TRUE, verbose = TRUE) {
     
     assertFlag(verbose)
     assertSubset(readGroupsToTest, annotationReadGroups(SNPhood.o))
