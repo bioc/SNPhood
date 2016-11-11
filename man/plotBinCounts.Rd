@@ -7,7 +7,7 @@
 plotBinCounts(SNPhood.o, regions = 1, readGroups = NULL, datasets = NULL,
   readGroupColors = NULL, ylim = NULL, addGenotype = TRUE,
   plotGenotypeRatio = FALSE, addTitle = TRUE, colorPalette = "Set1",
-  plotGraph = TRUE, fileToPlot = NULL, maxWidthLabels = NULL,
+  printPlot = TRUE, fileToPlot = NULL, maxWidthLabels = NULL,
   verbose = FALSE)
 }
 \arguments{
@@ -43,7 +43,8 @@ Allowed palette names are "Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Se
 then determined automatically from the given palette name (from left to right, depending on the number of datasets to be plotted).
 The colors for the read groups within each datasets are based on the colors for the dataset, but with different saturation values.}
 
-\item{plotGraph}{Logical(1). Default TRUE. Should the graphs be plotted to the current graphics device?}
+\item{printPlot}{Logical(1). Default TRUE. Should the plots be printed? Only relevant if \code{fileToPlot} is set to NULL; otherwise, the plots
+are always printed to the output file.}
 
 \item{fileToPlot}{Character(1) or \code{NULL}. Default \code{NULL}. 
 Filename of the PDF file for the output plots.

@@ -1,7 +1,7 @@
 Package: SNPhood
 Title: SNPhood: Investigate, quantify and visualise the epigenomic
     neighbourhood of SNPs using NGS data
-Version: 1.5.0
+Version: 1.5.1
 Authors@R: c(person("Christian", "Arnold", email =
         "christian.arnold@embl.de", role = c("cre","aut")),
         person("Pooja", "Bhat", email = "pooja.bhat@embl.de", role =
@@ -33,39 +33,43 @@ Description: To date, thousands of single nucleotide polymorphisms (SNPs) have
     binding patterns around the SNPs of interest.
 Imports:
     DESeq2,
-	cluster,
-	ggplot2,
-	lattice,
-	GenomeInfoDb,
-	BiocParallel,
-	VariantAnnotation,
-	BiocGenerics,
-	IRanges,
-	methods,
+	  cluster,
+	  ggplot2,
+    lattice,
+    GenomeInfoDb,
+    BiocParallel,
+	  VariantAnnotation,
+	  BiocGenerics,
+	  IRanges,
+	  methods,
     SummarizedExperiment,
     RColorBrewer,
     Biostrings,
-    grDevices,gridExtra,stats,grid,utils,
-    graphics,
+    grDevices,
+    gridExtra,
+    stats,
+    grid,
+    utils,
     reshape2,
     scales,
-	S4Vectors
+	  S4Vectors
 Depends:
-    R (>= 3.2),
-	GenomicRanges,
+    R (>= 3.1),
+	  GenomicRanges,
     Rsamtools,
     data.table,
     checkmate
 Suggests:
     BiocStyle,
     knitr,
+	  pryr,
     rmarkdown,
     SNPhoodData,
-    corrplot,
-    pryr
+    corrplot
 VignetteBuilder: knitr
 biocViews: Software
 License: LGPL (>= 3)
 LazyData: true
+URL: https://bioconductor.org/packages/SNPhood
 BugReports: christian.arnold@embl.de
 RoxygenNote: 5.0.1

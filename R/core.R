@@ -47,14 +47,22 @@
 #' @seealso \code{\link{analyzeSNPhood}} 
 #' @export
 #' @import checkmate
-collectFiles <- function(patternFiles, recursive = FALSE, ignoreCase = TRUE, inputFiles = NA, individualID = NA, genotypeMapping = NA, verbose = TRUE)  {
+collectFiles <- function(patternFiles, 
+                         recursive = FALSE, 
+                         ignoreCase = TRUE, 
+                         inputFiles = NA, 
+                         individualID = NA, 
+                         genotypeMapping = NA, 
+                         verbose = TRUE)  {
     
     # Check types and validity of arguments   
     assertCharacter(patternFiles, any.missing = FALSE, min.chars = 1, min.len = 1)
     assertFlag(recursive)
     assertFlag(ignoreCase)
-    assert(checkScalarNA(inputFiles),   checkCharacter(inputFiles,   any.missing = TRUE, all.missing = TRUE, min.chars = 1, min.len = 1))
-    assert(checkScalarNA(individualID), checkCharacter(individualID, any.missing = TRUE, all.missing = TRUE, min.chars = 1, min.len = 1))
+    assert(checkScalarNA(inputFiles),   
+           checkCharacter(inputFiles,   any.missing = TRUE, all.missing = TRUE, min.chars = 1, min.len = 1))
+    assert(checkScalarNA(individualID), 
+           checkCharacter(individualID, any.missing = TRUE, all.missing = TRUE, min.chars = 1, min.len = 1))
     assertFlag(verbose)
     
     
@@ -146,7 +154,7 @@ collectFiles <- function(patternFiles, recursive = FALSE, ignoreCase = TRUE, inp
 #' }
 #' For reasons of reduced redundancy, a detailed description of the parameters can be found at the end of the 
 #' main vignette in \code{SNPhood} (\code{browseVignettes("SNPhood")}).
-                      
+
 #' @examples
 #' ## Only one parameter can, optionally, be specified when calling the function
 #' par.l = getDefaultParameterList(path_userRegions = "path/to/regions", isPairedEndData = TRUE)
@@ -158,11 +166,12 @@ collectFiles <- function(patternFiles, recursive = FALSE, ignoreCase = TRUE, inp
 #' @seealso \code{\link{analyzeSNPhood}} 
 #' @export
 #' @import checkmate   
-getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData = TRUE) {
+getDefaultParameterList  <-  function(path_userRegions = NULL, 
+                                      isPairedEndData = TRUE) {
     
     assert(checkNull(path_userRegions), 
            checkCharacter(path_userRegions, any.missing = FALSE, min.chars = 1, len = 1)
-           )
+    )
     assertFlag(isPairedEndData)
     
     readFlags.l = .generateDefaultReadFlags(pairedEndReads = isPairedEndData)
@@ -194,7 +203,9 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     c(readFlags.l, others.l)
 }
 
-.getUniqueMappabilityData <- function(genomeAssembly, readLength, verbose = TRUE) {
+.getUniqueMappabilityData <- function(genomeAssembly, 
+                                      readLength, 
+                                      verbose = TRUE) {
     
     assertSubset(genomeAssembly, c("hg38", "hg19", "hg18", "mm10", "mm9", "dm3"))
     assertInt(readLength, lower = 15)
@@ -213,7 +224,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
                                        "75" = c(rep(0.793,3), rep(0.807,2), 0.695),
                                        "90" = c(rep(0.808,3), rep(0.817,2), 0.698), 
                                        stringsAsFactors = FALSE)
-
+    
     rownames(uniqueMappability.df) = c("hg38", "hg19", "hg18", "mm10", "mm9", "dm3")
     
     # Get the read length that is closest to the real one
@@ -225,7 +236,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     }
     
     res = uniqueMappability.df[which(rownames(uniqueMappability.df) == genomeAssembly), which(colnames(uniqueMappability.df) == paste0("X", bestApprox))]
-
+    
     if (verbose) message("  Value for the effective genome size: ", res)
     
     res
@@ -260,7 +271,8 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 
 #' @import checkmate
 #' @importFrom BiocParallel multicoreWorkers
-.checkConfigFile <- function(par.l, verbose = TRUE) {
+.checkConfigFile <- function(par.l, 
+                             verbose = TRUE) {
     
     
     supportedPar.l = getDefaultParameterList(NULL)
@@ -296,7 +308,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     if (length(which(is.na(parsNotFound))) > 0) {
         parsNotFound     =  parsNotFound[-which(is.na(parsNotFound))]
     }
-
+    
     
     if (length(parsNotSupported) > 0) {
         warning(paste("The following parameters are not supported and have been ignored: ", paste(parsNotSupported, collapse = ", "), sep = ""))    
@@ -308,7 +320,8 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     
     
     # Check that all parameters are valid
-    assert(checkInt(par.l$linesToParse, lower = -1, upper = -1), checkInt(par.l$linesToParse, lower = 1))
+    assert(checkInt(par.l$linesToParse, lower = -1, upper = -1),
+           checkInt(par.l$linesToParse, lower = 1))
     assertIntegerish(par.l$binSize, lower = 1, any.missing = FALSE, len = 1)
     assertIntegerish(par.l$regionSize, lower = 1, any.missing = FALSE, len = 1)
     assertIntegerish(par.l$nCores, lower = 1, any.missing = FALSE, len = 1)
@@ -378,7 +391,11 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 #' @import Rsamtools
 # @importFrom Rsamtools scanBamWhat
 #' @import checkmate
-.extractFromBAM  <-  function(ranges.gr, file, fieldsToRetrieve, par.l, verbose = TRUE) {
+.extractFromBAM  <-  function(ranges.gr, 
+                              file, 
+                              fieldsToRetrieve, 
+                              par.l, 
+                              verbose = TRUE) {
     
     # Check types and validity of arguments    
     assertClass(ranges.gr, "GRanges") 
@@ -402,7 +419,11 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 # @importFrom GenomicRanges start end strand seqnames 
 #' @import GenomicRanges
 #' @import checkmate
-.createBins  <-  function(userRegions.gr, par.l, applyLastBinStrategy = TRUE, chrSizes.df, verbose = TRUE) {
+.createBins  <-  function(userRegions.gr, 
+                          par.l, 
+                          applyLastBinStrategy = TRUE, 
+                          chrSizes.df, 
+                          verbose = TRUE) {
     
     # Check types and validity of arguments 
     assertClass(userRegions.gr, "GRanges") 
@@ -424,7 +445,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     .createEndSeq  <-  function(x, userRegions.gr, binSize) {
         seq.int(start(userRegions.gr)[x], end(userRegions.gr)[x], binSize) + binSize - 1
     }
-
+    
     
     # Check here: https://support.bioconductor.org/p/66050/
     
@@ -473,7 +494,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
                                        iteration = seq_len(nRegionsCur), 
                                        verbose = verbose,
                                        functionName = .funStrand, userRegions.gr, nBinsPerRegion.vec)
-
+    
     
     bins.l$origRegionIndex = .execInParallelGen(nCores = par.l$nCores, 
                                                 returnAsList = FALSE,
@@ -574,7 +595,11 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 #' @import GenomicRanges
 # @importFrom GenomicRanges countOverlaps
 #' @importFrom IRanges  IRangesList IRanges
-.calculateOverlapsBin  <-  function(bamObj, par.l, bins.l, nOverlapsRegion.vec, verbose) {
+.calculateOverlapsBin  <-  function(bamObj, 
+                                    par.l, 
+                                    bins.l, 
+                                    nOverlapsRegion.vec, 
+                                    verbose) {
     
     # Check types and validity of arguments     
     assertList(bamObj, any.missing = FALSE, min.len = 1)
@@ -605,7 +630,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     # New version of Bioconductor makes this operation much faster: 3 to 10x. See https://stat.ethz.ch/pipermail/bioc-devel/2014-December/006749.html and check if a code change is needed
     
     .calcOverlapsBins  <-  function(x, bins.l, bamObj) {
-        index = which(bins.l$origRegionIndex  ==  x);
+        index = which(bins.l$origRegionIndex  ==  x)
         countOverlaps(IRangesList(start = bins.l$start[index], end = bins.l$end[index]),
                       IRangesList(IRanges(start = bamObj[[x]]$pos, width = bamObj[[x]]$qwidth)))
     }
@@ -621,7 +646,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
                                        iteration = indexes.vec, 
                                        verbose = verbose,
                                        functionName = .calcOverlapsBins, bins.l, bamObj)
-
+        
         
         # Slower but uses GRanges instead of IRanges
         #   results.l = sapply(seq_len(nRegionsCur), FUN = function(x) {index=which(bins.l$origRegionIndex  ==  x);
@@ -639,11 +664,11 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
         assertSetEqual(length(unique(length.vec)),1)
         
         nReadCounts.vec = .execInParallelGen(nCores = par.l$nCores, 
-                                        returnAsList = FALSE,
-                                        iteration = results.l, 
-                                        verbose = verbose,
-                                        functionName =  match.fun("[["), 1)
-
+                                             returnAsList = FALSE,
+                                             iteration = results.l, 
+                                             verbose = verbose,
+                                             functionName =  match.fun("[["), 1)
+        
         
         # Save the read counts into the matrix
         # A parallelized version caused a bug before, so let's switch back to the original version. Since nRegionsCur is not so large, this does not cost much execution time
@@ -666,7 +691,12 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 #' @import checkmate
 #' @import GenomicRanges
 #' @importFrom S4Vectors as.table
-.calculateOverlapsReads  <-  function(startPos.l, width.l, par.l, bins.l, nOverlapsRegion.vec, verbose) {
+.calculateOverlapsReads  <-  function(startPos.l, 
+                                      width.l, 
+                                      par.l, 
+                                      bins.l, 
+                                      nOverlapsRegion.vec, 
+                                      verbose) {
     
     # Check types and validity of arguments     
     assertList(startPos.l, any.missing = FALSE, len = length(nOverlapsRegion.vec))
@@ -674,7 +704,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     assertList(par.l, min.len = 1, all.missing = FALSE)
     assertList(bins.l, min.len = 4, all.missing = FALSE)
     assertIntegerish(nOverlapsRegion.vec, lower = 0, any.missing = FALSE, min.len = 1)
-
+    
     
     nBinsPerRegion.vec  = table(bins.l$origRegionIndex)
     nColumnsMax         = max(nBinsPerRegion.vec)
@@ -693,13 +723,13 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
         
         # Transform to a slightly different nested format and return
         return(list(start = lapply(results.l, "[[", "start"), end = lapply(results.l, "[[", "end")))
-
+        
     }
-
+    
     # Do all the hard work. See .calculateOverlapsBins, just switched around
     .calcOverlapsReads  <-  function(x, bins.l, startPos.l, width.l) {
-        index = which(bins.l$origRegionIndex  ==  x);
-
+        index = which(bins.l$origRegionIndex  ==  x)
+        
         res2 = findOverlaps(IRanges(start = startPos.l[[x]], width = width.l[[x]]),
                             IRanges(start = bins.l$start[index], end = bins.l$end[index]),
                             type = "any")
@@ -708,14 +738,13 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
         
         # Grep the start bins from the subjectHits column
         start = as.numeric(hitsList.m[which(!duplicated(hitsList.m[,1])),2])
-
+        
         # Now use a trick to extract the end column: Use as.table to convert to a table that lists for each query how often it overlapped.
         # Because overlaps in a particular user region must be, by definition, adjacent, the end equals the start + length -1
         end   = as.numeric(start + (as.numeric(as.table(res2)) - 1))
         
         stopifnot(length(start) == length(end))
-        stopifnot(all(end >= start))
- 
+        
         # Old: Too memory consuming because a lot of regions have a low number of reads
         #RleList(list(start=start, end=end), compress = TRUE)
         list(start = start, end = end)
@@ -725,7 +754,7 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     # Make faster and only calculate overlaps if the region count in nOverlapsRegion.vec is > 0
     indexes.vec = setdiff(seq_len(nRegionsCur), which(nOverlapsRegion.vec  ==  0))
     
-
+    
     if (length(indexes.vec) > 0) {
         
         # Compute in parallel if possible
@@ -751,7 +780,9 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 }
 
 #' @import checkmate
-.calcRandomBackgroundDistr <- function(nRegions, nBins, readOverlaps.l) {
+.calcRandomBackgroundDistr <- function(nRegions, 
+                                       nBins, 
+                                       readOverlaps.l) {
     
     assertInt(nRegions, lower = 1)
     assertInt(nBins, lower = 1)
@@ -769,18 +800,18 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
     stopifnot(nRegions == length(readOverlaps.l[[1]][["start"]]))
     
     for (alleleCur in names(readOverlaps.l)) {
-
+        
         nReads = sapply(readOverlaps.l[[alleleCur]][["start"]], length)
         
         # Assign each read to read group 1 initially
         rnd.l = sapply(1:nRegions, function(x) rep(1, nReads[x]))
         
-
+        
         for (regionCur in which(nReads > 0)) {
             
             # Randomly assign each read to one of the two alleles, named 1 and 2 hereafter for simplicity. Make sure that the distribution is 50/50
             rnd.l[[regionCur]][sample(1:nReads[regionCur], floor(nReads[regionCur] / 2), replace = FALSE)] = 2
-
+            
             rndAlleles = names(readOverlaps.l)[rnd.l[[regionCur]]]
             binStarts = as.numeric(readOverlaps.l[[alleleCur]] [["start"]] [[regionCur]] )
             binEnds   = as.numeric(readOverlaps.l[[alleleCur]] [["end"]]   [[regionCur]] )
@@ -791,9 +822,9 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
                 indexRead = rndAlleles[indexRead]
                 res.l[[indexRead]] [regionCur,  cols] = res.l[[indexRead]] [regionCur,  cols] + 1
             }
-     
+            
         }
-
+        
     } # end for (alleleCur in names(readOverlaps.l))
     
     res.l
@@ -863,7 +894,10 @@ getDefaultParameterList  <-  function(path_userRegions = NULL, isPairedEndData =
 #' @import checkmate 
 #' @import Rsamtools
 #  @importFrom Rsamtools
-analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation = FALSE, verbose = TRUE) {
+analyzeSNPhood  <-  function(par.l, 
+                             files.df, 
+                             onlyPrepareForDatasetCorrelation = FALSE, 
+                             verbose = TRUE) {
     
     # Check types and validity of arguments   
     if (!testList(par.l, all.missing = FALSE, len = length(getDefaultParameterList("/path/to/userRegions.example")))) {
@@ -889,17 +923,17 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     ##########################################################
     
     par.l = .checkConfigFile(par.l, verbose)
-
+    
     # Make sure that the files data frame does not contain any factors
     files.df[] <- lapply(files.df, as.character)
-
+    
     files.df$input[which(files.df$input  ==  "")] = NA
     
     # Remove spaces at the beginning and the end and after commas as well as newline characters
     files.df$input = gsub("[\r\n]", "", files.df$input)
     files.df$input = sub('^\\s+','' , files.df$input, perl = TRUE)
     files.df$input = sub(',\\s+',',', files.df$input, perl = TRUE)
-
+    
     
     if (par.l$normByInput & par.l$readGroupSpecific) {
         warning("Input normalization has been turned off because read-group specific reads have been requested. Currently, input normalization is not possible with read-group specific reads.")
@@ -910,7 +944,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     if (par.l$normByInput & par.l$effectiveGenomeSizePercentage == -1 & !par.l$assemblyVersion %in% c("hg38", "hg19", "hg18", "mm10", "mm9", "dm3")) {
         stop("For the specified genome assembly, SNPhood does not have default values for the parameter effectiveGenomeSizePercentage. Please adjust the value manually. See the vignette or help pages for details.")
     }
-
+    
     if (par.l$normByInput & any(is.na(files.df$input))) {
         stop("Input normalization has been enabled, but at least one file has no corresponding input file as a control.")
     }
@@ -918,7 +952,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     if (!par.l$normByInput & any(!is.na(files.df$input))) {
         stop("Input normalization has been disabled, but filenames for input files have been provided. Either enable input normalization or set input files to NA")
     }
-
+    
     
     # Make sure the order of appearance does not play a role in files.df$input 
     if (!any(is.na(files.df$input))) {
@@ -950,19 +984,19 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     
     nFilesToProcess = nrow(files.df)
     nIndividualsToProcess = length(unique(files.df$individual))
-
+    
     # Make sure the normalization among the different data files is only performed when necessary und useful
     if (par.l$normByInput | nFilesToProcess  ==  1 | par.l$readGroupSpecific) {
         if (par.l$normAmongEachOther) warning("Forcing parameter normAmongEachOther to FALSE because either input normalization is turned on, only one files is going to be processed, or because allele-specific reads are requested")
         par.l$normAmongEachOther = FALSE
     }
-
+    
     ###############################
     # Check genotype integration #
     ###############################
     
     integrateGenotype = TRUE
-
+    
     if (!"genotype" %in% colnames(files.df)) {     
         integrateGenotype = FALSE  
         files.df$genotype = NA
@@ -977,7 +1011,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
             len = sapply(res.split,length)
             
             assertInteger(unique(len), len = 1, lower = 2, upper = 2)
- 
+            
             genotypeMapping.df = data.frame(samples = files.df$signal[index], 
                                             genotypeFile = sapply(res.split, "[[", 1), 
                                             sampleName   = sapply(res.split, "[[", 2)
@@ -1025,7 +1059,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     # Split the regions into bins #
     ###############################
     start.timeTemp  <-  Sys.time()
-
+    
     if (!onlyPrepareForDatasetCorrelation) {
         # This has to be done before parsing the BAM file, as the user regions may change as a consequence of the lastBin parameter
         
@@ -1039,40 +1073,40 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
         nBinsCur    = max(table(bins.l$origRegionIndex))
         
         if (verbose) message(" Split ", nRegionsCur," entries into ", nRegionsBins," bins")
-
+        
         SNPhood.o@annotation$bins  = paste0("bin_", seq_len(nBinsCur))
         
         # Store the bin number where the SNP is located
         SNPhood.o@internal$plot_origBinSNPPosition = (nBinsCur + 1)/2
         
         SNPhood.o@internal$plot_labelBins = .calcBinLabelsPlot(nBinsCur)
-  
+        
     }
     
     .printExecutionTime(start.timeTemp, verbose)
-
+    
     #.getMemoryProfile(SNPhood.o, verbose = verbose)
     
     
     #######################################################
     # Prepare the data structure if not initialzed before #
     #######################################################
-
+    
     # Parse the first signal file and determine the number and names of the read groups
     res.l = .BAMHeaderConsistencyChecks(par.l, SNPhood.o@annotation$regions, files.df$signal[1], NULL, verbose = TRUE)
     SNPhood.o@config$readGroupSpecific = res.l$readGroupSpecific
     SNPhood.o = .initSNPhoodObject(SNPhood.o, files.df, res.l$readGroups, onlyPrepareForDatasetCorrelation) 
     
-
+    
     ###############################################
     # ITERATE OVER ALL UNIQUE SETS OF INPUT FILES #
     ###############################################
-
-
+    
+    
     # Check if the set of input files has already been read in before
     # Use an extra data structure to track which files or combinations of files have already been processed
     processedFileSets.l = list()
-
+    
     
     inputFileSetCounter = 0
     for (inputFileSetCur in unique(files.df$input)) {
@@ -1090,7 +1124,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
         }
         
         if (par.l$normByInput) {
-
+            
             inputFileSetCur.vec = strsplit(inputFileSetCur, ",", fixed = TRUE)[[1]]
             if (verbose) message(" Corresponding set of input files that will be used as a control: ", paste0(seq_len(length(inputFileSetCur.vec)), ":", inputFileSetCur.vec, collapse = ","))
             
@@ -1107,10 +1141,10 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                 
                 # Will only be one read group here, otherwise normalization cannot happen
                 for (alleleCur in readGroups) {
-                  
+                    
                     SNPhood.o@readCountsBinned     [[alleleCur]] [[inputFileSetCur]] = results.l$readCountsBinned   [[alleleCur]]
                     SNPhood.o@readCountsUnbinned   [[alleleCur]] [[inputFileSetCur]] = results.l$readCountsUnbinned [[alleleCur]]
-  
+                    
                 }
                 
                 rm(results.l)
@@ -1127,7 +1161,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
         #################################################################################
         # ITERATE OVER ALL UNIQUE SETS OF INDIVIDUALS WITH THE GIVEN SET OF INPUT FILES #
         #################################################################################       
-
+        
         individualsToProcess = as.character(unique(files.df$individual[indexRowsInput.vec]))
         
         nIndividualsToProcess = length(individualsToProcess)
@@ -1142,12 +1176,12 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
             
             if (verbose) message("\nPROCESS INDIVIDUAL ", nIndProcessed," from ", nIndividualsToProcess,": ", individualCur)
             start_individual = Sys.time()
-
-
+            
+            
             ##############################################################
             # ITERATE OVER ALL SIGNAL FILES WITH THE GIVEN INDIVIDUAL ID #
             ##############################################################
-        
+            
             signalFilesIndAll = as.character(unique(files.df$signal[indexRowsSignal.vec]))
             
             SNPhood.o@annotation$files[[individualCur]] = 
@@ -1162,16 +1196,16 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                 SNPhood.o@annotation$files[[individualCur]]$input = 
                     list(files = inputFileSetCur.vec, composite = isComposite, origName = inputFileSetCur)
             }
-           
             
-
+            
+            
             ####################################################################
             # Parse all files that belong to the individual and extract counts #
             ####################################################################
-
+            
             readGroups = annotationReadGroups(SNPhood.o)
             results.l = .extractAndNormalize(par.l, SNPhood.o@annotation$regions, readGroups, SNPPos.gr, signalFilesIndAll, individualCur, bins.l, type = "signal", verbose = TRUE)
-
+            
             SNPhood.o@internal$globalBackground[[individualCur]] = results.l$globalBackground 
             
             for (alleleCur in readGroups) {
@@ -1187,14 +1221,14 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
             
             rm(results.l)
             
-          
+            
             ####################
             # Normalize counts #
             ####################
             if (par.l$normByInput) {
                 
                 alleleCur = "allReadGroups"
-
+                
                 if (verbose) message(" Normalize library sizes...")
                 
                 counts.m = matrix(c(unlist(SNPhood.o@readCountsUnbinned[[alleleCur]] [[individualCur]]  , use.names = FALSE),
@@ -1226,10 +1260,10 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                 ###########################################
                 # Divide the observed signal by the maximum of the global average per bin and the region mean. 
                 # Thereby, make it less vulnerable to stochasticity as compared to calculating it by the observed counts in each bin
-
+                
                 sizeFactorInput      = SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]]
                 sizeFactorIndividual = SNPhood.o@internal$sizeFactors[[alleleCur]] [[individualCur]]
-
+                
                 nReadsAvgBinGlobalInputNorm = SNPhood.o@internal$globalBackground[[inputFileSetCur]] / sizeFactorInput
                 nReadsAvgBinLocalInputNorm  = rowMeans(SNPhood.o@readCountsBinned[[alleleCur]] [[inputFileSetCur]] / sizeFactorInput)
                 
@@ -1241,18 +1275,18 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                 # Now also incorporate the actual observed normalized read count values for each bin
                 maxAllInput.m = pmax(matrix(rep(maxBinAvg.vec, nBinsCur), ncol = nBinsCur),
                                      (SNPhood.o@readCountsBinned[[alleleCur]] [[inputFileSetCur]] / sizeFactorInput)
-                                     )
+                )
                 
                 
                 SNPhood.o@enrichmentBinned[[alleleCur]] [[individualCur]] = 
                     (SNPhood.o@readCountsBinned[[alleleCur]] [[individualCur]] / sizeFactorIndividual) / maxAllInput.m
-                   
+                
                 
                 rm(maxAllInput.m,maxBinAvg.vec)
-
+                
             } # end input size normalization
             
-
+            
             #.getMemoryProfile(SNPhood.o, verbose = verbose)
             
             #############################################
@@ -1286,7 +1320,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                     }
                     
                 }
- 
+                
                 # Reset slots readCountsBinned because it has been replaced by enrichment
                 
                 for (readGroupCur in annotationReadGroups(SNPhood.o)) {
@@ -1299,17 +1333,17 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                 
                 
             } # end if (!SNPhood.o@config$keepAllReadCounts)
-           
+            
             
             # Optimize memory footprint and sort read start positions and width
             if (nReadGroups(SNPhood.o) > 1) {
-                    
+                
                 for (readGroupCur in annotationReadGroups(SNPhood.o)) {
                     
                     nReads.vec = sapply(SNPhood.o@internal$readStartPos[[readGroupCur]][[individualCur]], length)
                     
                     for (regionCur in which(nReads.vec > 0)) {
-
+                        
                         sortOrder = order(SNPhood.o@internal$readStartPos[[readGroupCur]][[individualCur]][[regionCur]])
                         
                         SNPhood.o@internal$readStartPos[[readGroupCur]][[individualCur]][[regionCur]] = SNPhood.o@internal$readStartPos[[readGroupCur]][[individualCur]][[regionCur]][sortOrder]
@@ -1320,12 +1354,12 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
                         if (length(uniqueVal) == 1) {
                             SNPhood.o@internal$readWidth[[readGroupCur]][[individualCur]][[regionCur]] = uniqueVal
                         }
-
+                        
                     }
                     
-                   
+                    
                 }
-   
+                
             } # end if (nReadGroups(SNPhood.o) > 1)
             
             #.getMemoryProfile(SNPhood.o, verbose = verbose)
@@ -1346,7 +1380,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
         
         if (verbose) message("\n\nFINISHED SUCCESSFULLY WITH ALL INPUT FILES.\n")
         .printExecutionTime(start.time, verbose = verbose)
-
+        
         warning("Note that you set the parameter \"onlyPrepareForDatasetCorrelation\" to TRUE. You will not be able to use any functionality except the sample correlation plots. For a full analysis, run the function again and set the parameter to FALSE.")
         
         message("Warnings may have occurred, as indicated. Please check them carefully with unique(warnings()).")
@@ -1359,7 +1393,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     if (par.l$normAmongEachOther) {
         
         if (verbose) message("Parameter \"normAmongEachOther\" has been set to TRUE. Normalize all files among each other.")
-
+        
         alleleCur = annotationReadGroups(SNPhood.o)
         stopifnot(length(alleleCur) == 1)
         
@@ -1383,11 +1417,11 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
             SNPhood.o@readCountsBinned  [[alleleCur]] [[uniqueInd[i]]] = SNPhood.o@readCountsBinned  [[alleleCur]] [[uniqueInd[i]]] / res.l$sizeFactors[i] 
             
         }
-
+        
         
     } # end if normalize among each other
     
-
+    
     ##################################
     # INTEGRATE GENOTYPE IF PROVIDED #
     ################################## 
@@ -1400,7 +1434,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     # DETERMINE HETEROZYGOSITY #
     ############################
     SNPhood.o = .determineHeterozygosity(SNPhood.o, verbose = verbose)
-
+    
     
     # Set the flag that we now have an object that contains all data, validity checkIng is now active
     SNPhood.o@internal$disableObjectIntegrityChecking = FALSE
@@ -1412,7 +1446,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     .printExecutionTime(start.time, verbose = verbose)
     
     message("Warnings may have occurred, as indicated. Please check them carefully with unique(warnings()).")
-
+    
     return(SNPhood.o)
     
 }
@@ -1422,7 +1456,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
 # @importFrom GenomicRanges mcols start<- end<-
 #' @import checkmate
 .getSNPGRangesObj  <-  function(annotation) {
-
+    
     SNPPos.gr = annotation$regions
     start(SNPPos.gr) = mcols(SNPPos.gr)$SNPPos
     end(SNPPos.gr)   = mcols(SNPPos.gr)$SNPPos
@@ -1441,7 +1475,7 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
     if (type == "SNPs") {
         fieldsToRetrieve = c("strand","pos", "seq")
     }
-
+    
     fieldsToRetrieve
 }
 
@@ -1481,7 +1515,14 @@ analyzeSNPhood  <-  function(par.l, files.df, onlyPrepareForDatasetCorrelation =
 #' @export
 #' @import checkmate
 # TODO: Get rid of the object copying, but how?
-testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHypothesisFraction = 0.5, calcBackgroundDistr = TRUE, nRepetitions = 100,  pValuesToTestBackground = c(0.0001, 0.0005, 0.001, 0.005, seq(0.01,1,0.01)), verbose = TRUE) {
+testForAllelicBiases <- function(SNPhood.o, 
+                                 readGroups, 
+                                 confLevel = 0.95, 
+                                 nullHypothesisFraction = 0.5, 
+                                 calcBackgroundDistr = TRUE, 
+                                 nRepetitions = 100,  
+                                 pValuesToTestBackground = c(0.0001, 0.0005, 0.001, 0.005, seq(0.01,1,0.01)), 
+                                 verbose = TRUE) {
     
     start.time  <-  Sys.time()
     
@@ -1553,42 +1594,42 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
         stopifnot(length(indexAlleles)  ==  2)
         
         
-        res.l$pValue[[individualCur]] = matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
-                                                                    as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]),
-                                                                    probSuccess = nullHypothesisFraction,
-                                                                    returnType = "p.value",
-                                                                    indexResult = 1,
-                                                                    conf.level = confLevel),
-                                               nrow = nRegionsCur, ncol = nBinsCur
-        )
+        res.l$pValue[[individualCur]] = 
+            matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
+                                        as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]),
+                                        probSuccess = nullHypothesisFraction,
+                                        returnType = "p.value",
+                                        indexResult = 1,
+                                        conf.level = confLevel),
+                   nrow = nRegionsCur, ncol = nBinsCur)
         
-        res.l$confIntervalMin[[individualCur]] = matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
-                                                                             as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]), 
-                                                                             probSuccess = nullHypothesisFraction,
-                                                                             returnType = "conf.int",
-                                                                             indexResult = 1,
-                                                                             conf.level = confLevel),
-                                                        nrow = nRegionsCur, ncol = nBinsCur
-        )
-        
-        
-        res.l$confIntervalMax[[individualCur]] = matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
-                                                                             as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]), 
-                                                                             probSuccess = nullHypothesisFraction,
-                                                                             returnType = "conf.int",
-                                                                             indexResult = 2,
-                                                                             conf.level = confLevel),
-                                                        nrow = nRegionsCur, ncol = nBinsCur
-        )
+        res.l$confIntervalMin[[individualCur]] = 
+            matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
+                                        as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]), 
+                                        probSuccess = nullHypothesisFraction,
+                                        returnType = "conf.int",
+                                        indexResult = 1,
+                                        conf.level = confLevel),
+                   nrow = nRegionsCur, ncol = nBinsCur)
         
         
-        res.l$fractionEstimate[[individualCur]] = matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
-                                                                              as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]), 
-                                                                              probSuccess = nullHypothesisFraction,
-                                                                              returnType = "estimate",
-                                                                              conf.level = confLevel),
-                                                         nrow = nRegionsCur, ncol = nBinsCur
-        )
+        res.l$confIntervalMax[[individualCur]] = 
+            matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
+                                        as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]), 
+                                        probSuccess = nullHypothesisFraction,
+                                        returnType = "conf.int",
+                                        indexResult = 2,
+                                        conf.level = confLevel),
+                   nrow = nRegionsCur, ncol = nBinsCur)
+        
+        
+        res.l$fractionEstimate[[individualCur]] = 
+            matrix(.calcBinomTestVector(as.vector(SNPhood.o@readCountsBinned[[indexAlleles[1]]] [[individualCur]]), 
+                                        as.vector(SNPhood.o@readCountsBinned[[indexAlleles[2]]] [[individualCur]]), 
+                                        probSuccess = nullHypothesisFraction,
+                                        returnType = "estimate",
+                                        conf.level = confLevel),
+                   nrow = nRegionsCur, ncol = nBinsCur)
         
         if (calcBackgroundDistr) {
             
@@ -1600,12 +1641,12 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
             for (x in readGroups) {
                 if (verbose) message(" Read group ",x)
                 readOverlaps.l[[x]] = .calculateOverlapsReads(
-                                        SNPhood.o@internal$readStartPos[[x]] [[individualCur]],
-                                        SNPhood.o@internal$readWidth   [[x]] [[individualCur]],
-                                        parameters(SNPhood.o), 
-                                        bins.l, 
-                                        SNPhood.o@readCountsUnbinned   [[x]] [[individualCur]],
-                                        verbose)
+                    SNPhood.o@internal$readStartPos[[x]] [[individualCur]],
+                    SNPhood.o@internal$readWidth   [[x]] [[individualCur]],
+                    parameters(SNPhood.o), 
+                    bins.l, 
+                    SNPhood.o@readCountsUnbinned   [[x]] [[individualCur]],
+                    verbose)
             }
             
             pValuesMinReal = rep(NA, nRegionsCur)
@@ -1621,7 +1662,8 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
             pValuesMinSim = rep(NA, nRepetitions * nRegionsCur)
             
             
-            if (verbose) message(" Calculate background distribution with ",nRepetitions," repetitions. This may take a while.")
+            if (verbose) 
+                message(" Calculate background distribution with ",nRepetitions," repetitions. This may take a while.")
             
             # Calculate the background distribution in parallel. Get shuffled reads for both alleles
             # Independent of x. Could also be removed from the function presumably
@@ -1629,7 +1671,7 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
                 .calcRandomBackgroundDistr(nRegionsCur, nBinsCur, readOverlaps.l) 
             }
             
-
+            
             res.shuffled.l = .execInParallelGen(nCores = parameters(SNPhood.o)$nCores, 
                                                 returnAsList = TRUE,
                                                 iteration = seq_len(nRepetitions), 
@@ -1663,12 +1705,14 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
                 pValuesMinSim[startIndex:endIndex] = sapply(1:nRegionsCur, function(x) {
                     res.l$background[[individualCur]][[repCur]][x, pMinIndex[x]]
                 })
-
+                
                 
             }
             
-            #resPackage.df = data.frame(FDR = numeric(), pValueThreshold = numeric(), CI_lower = numeric(), CI_upper = numeric(), pi0 = numeric(), c1 = numeric(), ro = numeric(), vp1 = numeric())
-            resManual.df = data.frame(FDR = numeric(), pValueThreshold = numeric(), nReal = numeric(), nSim = numeric())
+            resManual.df = data.frame(FDR = numeric(), 
+                                      pValueThreshold = numeric(), 
+                                      nReal = numeric(), 
+                                      nSim = numeric())
             
             
             for (pThresCur in pValuesToTestBackground) {
@@ -1686,7 +1730,10 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
                     fdr = 0
                 }
                 
-                resManual.df = rbind(resManual.df, data.frame(pValueThreshold = pThresCur, FDR = fdr, nReal = nReal, nSim = nSim))
+                resManual.df = rbind(resManual.df, data.frame(pValueThreshold = pThresCur, 
+                                                              FDR = fdr, 
+                                                              nReal = nReal, 
+                                                              nSim = nSim))
             }
             
             res.l$FDR_results[[individualCur]] = resManual.df 
@@ -1715,7 +1762,7 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
     
     if (verbose) message("\n\nFINISHED SUCCESSFULLY WITH ALLELIC BIAS TEST.\n")
     .printExecutionTime(start.time, verbose = verbose)
-        
+    
     SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     SNPhood.o 
@@ -1736,7 +1783,8 @@ testForAllelicBiases <- function(SNPhood.o, readGroups, confLevel = 0.95, nullHy
 #' @aliases regions
 #' @rdname regions-methods
 #' @export
-nRegions <- function(SNPhood.o, verbose = FALSE) {
+nRegions <- function(SNPhood.o, 
+                     verbose = FALSE) {
     
     assertFlag(verbose)
     length(SNPhood.o@annotation$regions)
@@ -1755,7 +1803,8 @@ nRegions <- function(SNPhood.o, verbose = FALSE) {
 #' @export
 #' @aliases bins
 #' @rdname bins-methods
-nBins <- function(SNPhood.o, verbose = FALSE) {
+nBins <- function(SNPhood.o, 
+                  verbose = FALSE) {
     
     assertFlag(verbose)
     
@@ -1779,7 +1828,8 @@ nBins <- function(SNPhood.o, verbose = FALSE) {
 #' @export
 #' @aliases datasets
 #' @rdname datasets-methods
-nDatasets <- function(SNPhood.o, verbose = FALSE) {
+nDatasets <- function(SNPhood.o, 
+                      verbose = FALSE) {
     
     assertFlag(verbose)
     length(SNPhood.o@annotation$files)
@@ -1798,7 +1848,8 @@ nDatasets <- function(SNPhood.o, verbose = FALSE) {
 #' @export
 #' @aliases readGroups
 #' @rdname readGroups-methods
-nReadGroups <- function(SNPhood.o, verbose = FALSE) {
+nReadGroups <- function(SNPhood.o, 
+                        verbose = FALSE) {
     
     assertFlag(verbose)
     length(SNPhood.o@annotation$readGroups)
@@ -1820,7 +1871,9 @@ nReadGroups <- function(SNPhood.o, verbose = FALSE) {
 #' @import checkmate
 #' @import GenomicRanges
 # @importFrom GenomicRanges mcols
-annotationRegions <- function(SNPhood.o, asGRangesObj = FALSE, verbose = FALSE) {
+annotationRegions <- function(SNPhood.o, 
+                              asGRangesObj = FALSE, 
+                              verbose = FALSE) {
     
     assertFlag(verbose)
     assertFlag(asGRangesObj)
@@ -1846,7 +1899,8 @@ annotationRegions <- function(SNPhood.o, asGRangesObj = FALSE, verbose = FALSE) 
 #' data(SNPhood.o, package="SNPhood")
 #' annotationDatasets(SNPhood.o)
 #' @export
-annotationDatasets <- function(SNPhood.o, verbose = FALSE) {
+annotationDatasets <- function(SNPhood.o, 
+                               verbose = FALSE) {
     
     assertFlag(verbose)
     names(SNPhood.o@annotation$files)
@@ -1864,7 +1918,8 @@ annotationDatasets <- function(SNPhood.o, verbose = FALSE) {
 #' data(SNPhood.o, package="SNPhood")
 #' annotationReadGroups(SNPhood.o)
 #' @export
-annotationReadGroups <- function(SNPhood.o, verbose = FALSE) {
+annotationReadGroups <- function(SNPhood.o, 
+                                 verbose = FALSE) {
     
     assertFlag(verbose)
     SNPhood.o@annotation$readGroups
@@ -1882,7 +1937,8 @@ annotationReadGroups <- function(SNPhood.o, verbose = FALSE) {
 #' annotationReadGroups(SNPhood.o)
 #' @export
 
-annotationBins <- function(SNPhood.o, verbose = FALSE) {
+annotationBins <- function(SNPhood.o, 
+                           verbose = FALSE) {
     
     assertFlag(verbose)
     SNPhood.o@annotation$bins
@@ -1915,7 +1971,9 @@ annotationBins <- function(SNPhood.o, verbose = FALSE) {
 #' \strong{Results from the allelic bias test and clustering results will also be removed to keep the object consistent.}
 #' @export
 #' @import checkmate
-mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE) {
+mergeReadGroups  <-  function(SNPhood.o, 
+                              summaryFunction = "sum", 
+                              verbose = TRUE) {
     
     # TODO: merge only a particular set of read groups
     
@@ -1930,7 +1988,7 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
     }
     
     assertChoice(summaryFunction, c("mean", "sum"), .var.name = summaryFunction)  
-
+    
     if (SNPhood.o@internal$isAllelicRatio) {
         warning("Cannot merge read groups because read counts have been converted to allelic fractions. Object will remain unchanged.")
         return(SNPhood.o)
@@ -1944,7 +2002,7 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
     
     nColumns  = nBins(SNPhood.o)
     nRows     = nRegions(SNPhood.o)
-
+    
     
     for (i in 1:nDatasets(SNPhood.o)) {
         
@@ -1996,30 +2054,30 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
     # Reset, not meaningful to merge the old values anyway
     SNPhood.o@enrichmentBinned[["allReadGroups"]] = list()
     SNPhood.o@internal$sizeFactors[["allReadGroups"]] = list()
-
+    
     # Read start pos and width
     SNPhood.o@internal$readStartPos[["allReadGroups"]] = list()
     SNPhood.o@internal$readWidth   [["allReadGroups"]] = list()
-        
+    
     for (datasetCur in annotationDatasets(SNPhood.o)) {
         
         SNPhood.o@internal$readStartPos[["allReadGroups"]][[datasetCur]] = vector("list", nRegions(SNPhood.o))
         SNPhood.o@internal$readWidth   [["allReadGroups"]][[datasetCur]] = vector("list", nRegions(SNPhood.o))
         for (readGroupCur in uniqueReadGroups) {
-        
+            
             for (regionCur in seq_len(nRegions(SNPhood.o))) {
                 SNPhood.o@internal$readStartPos[["allReadGroups"]][[datasetCur]][[regionCur]] = 
                     c(SNPhood.o@internal$readStartPos[["allReadGroups"]][[datasetCur]][[regionCur]], SNPhood.o@internal$readStartPos[[readGroupCur]][[datasetCur]][[regionCur]])
-            
+                
                 SNPhood.o@internal$readWidth[["allReadGroups"]][[datasetCur]][[regionCur]] = 
                     c(SNPhood.o@internal$readWidth[["allReadGroups"]][[datasetCur]][[regionCur]], SNPhood.o@internal$readWidth[[readGroupCur]][[datasetCur]][[regionCur]])
                 
-                }
+            }
             
         }
         
     }
-  
+    
     # Delete old references
     for (j in uniqueReadGroups) {
         SNPhood.o@internal$readStartPos[[j]] = NULL
@@ -2028,7 +2086,7 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
     
     SNPhood.o@annotation$genotype$readsDerived[["allReadGroups"]] = list()
     for (i in annotationDatasets(SNPhood.o)) {
-
+        
         isInitiated = FALSE
         for (j in uniqueReadGroups) {
             
@@ -2037,7 +2095,7 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
                 isInitiated = TRUE
             } else {
                 SNPhood.o@annotation$genotype$readsDerived[["allReadGroups"]][[i]] = SNPhood.o@annotation$genotype$readsDerived[["allReadGroups"]][[i]] + 
-                                                                                     SNPhood.o@annotation$genotype$readsDerived[[j]][[i]]
+                    SNPhood.o@annotation$genotype$readsDerived[[j]][[i]]
             }
         }
     }
@@ -2055,7 +2113,7 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
     if (testNull(SNPhood.o@additionalResults$clustering$enrichmentBinned)) {
         SNPhood.o@additionalResults$clustering = NULL
     }
-
+    
     # Make object consistent
     SNPhood.o@annotation$readGroups = "allReadGroups"
     SNPhood.o@internal$mergedReadGroups = TRUE
@@ -2080,7 +2138,9 @@ mergeReadGroups  <-  function(SNPhood.o, summaryFunction = "sum", verbose = TRUE
 #' @seealso  \code{\link{deleteDatasets}}, \code{\link{deleteRegions}}
 #' @export
 #' @import checkmate
-deleteReadGroups   <-  function(SNPhood.o, readGroups = NULL, verbose = TRUE) {
+deleteReadGroups   <-  function(SNPhood.o, 
+                                readGroups = NULL, 
+                                verbose = TRUE) {
     
     # Check types and validity of arguments   
     assertFlag(verbose)
@@ -2094,8 +2154,8 @@ deleteReadGroups   <-  function(SNPhood.o, readGroups = NULL, verbose = TRUE) {
     
     assertSubset(readGroups, SNPhood.o@annotation$readGroups)
     assertCharacter(readGroups, any.missing = FALSE, min.chars = 1, min.len = 0, max.len = nReadGroups(SNPhood.o) - 1, unique = TRUE)
-
-   
+    
+    
     if (nReadGroups(SNPhood.o)  ==  1) {
         warning("Cannot delete any read groups because only one read group has been found (", annotationReadGroups(SNPhood.o),"). Returning an unmodified object.")
         return(SNPhood.o)
@@ -2106,7 +2166,7 @@ deleteReadGroups   <-  function(SNPhood.o, readGroups = NULL, verbose = TRUE) {
         warning("Between one and ", maxLen," read groups must be specified. Returning an unmodified object.")
         return(SNPhood.o) 
     }
-
+    
     stopifnot(nReadGroups(SNPhood.o) > length(readGroups))
     
     for (readGroupCur in readGroups) {
@@ -2123,7 +2183,7 @@ deleteReadGroups   <-  function(SNPhood.o, readGroups = NULL, verbose = TRUE) {
     SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     assertInt(nReadGroups(SNPhood.o), lower = 1)
-
+    
     SNPhood.o
 }
 
@@ -2148,7 +2208,9 @@ deleteReadGroups   <-  function(SNPhood.o, readGroups = NULL, verbose = TRUE) {
 #' @seealso \code{\link{renameBins}}, \code{\link{renameDatasets}}, \code{\link{renameRegions}}
 #' @import checkmate
 #' @export
-renameReadGroups  <-  function(SNPhood.o, newReadGroupsMapping, verbose = TRUE) {
+renameReadGroups  <-  function(SNPhood.o, 
+                               newReadGroupsMapping, 
+                               verbose = TRUE) {
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
@@ -2162,7 +2224,7 @@ renameReadGroups  <-  function(SNPhood.o, newReadGroupsMapping, verbose = TRUE) 
     assertList(newReadGroupsMapping, any.missing = FALSE, min.len = 1, max.len = nReadGroups(SNPhood.o))
     assertSubset(names(newReadGroupsMapping), annotationReadGroups(SNPhood.o))
     assertCharacter(unlist(newReadGroupsMapping), any.missing = FALSE, min.chars = 1, unique = TRUE)
-
+    
     for (i in seq_len(length(newReadGroupsMapping))) {
         
         oldR = names(newReadGroupsMapping)[i]
@@ -2178,8 +2240,8 @@ renameReadGroups  <-  function(SNPhood.o, newReadGroupsMapping, verbose = TRUE) 
         if (newR %in% annotationReadGroups(SNPhood.o)) {
             stop("Cannot rename read group ",oldR, " to ", newR, " because the new name is already present in the object.")
         }
-            
-
+        
+        
         names(SNPhood.o@readCountsUnbinned)[which(names(SNPhood.o@readCountsUnbinned)  ==  oldR)]     = newR
         
         names(SNPhood.o@readCountsBinned)[which(names(SNPhood.o@readCountsBinned)  ==  oldR)]         = newR
@@ -2192,7 +2254,7 @@ renameReadGroups  <-  function(SNPhood.o, newReadGroupsMapping, verbose = TRUE) 
         SNPhood.o@annotation$readGroups[which(SNPhood.o@annotation$readGroups  ==  oldR)] = newR
         
         names(SNPhood.o@annotation$genotype$readsDerived)[which(SNPhood.o@annotation$readGroups  ==  oldR)] = newR
-
+        
         SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested   [which(SNPhood.o@additionalResults$allelicBias$parameters$readGroupsTested    == oldR)] = newR
         SNPhood.o@additionalResults$allelicBias$parameters$readGroupsDiscarded[which(SNPhood.o@additionalResults$allelicBias$parameters$readGroupsDiscarded == oldR)] = newR
         
@@ -2224,7 +2286,9 @@ renameReadGroups  <-  function(SNPhood.o, newReadGroupsMapping, verbose = TRUE) 
 #' @seealso \code{\link{renameBins}}, \code{\link{renameReadGroups}}, \code{\link{renameRegions}}
 #' @export
 #' @import checkmate
-renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
+renameDatasets  <-  function(SNPhood.o, 
+                             newDatasetsMapping, 
+                             verbose = TRUE) {
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
@@ -2234,7 +2298,7 @@ renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
     assertList(newDatasetsMapping, any.missing = FALSE, min.len = 1, max.len = nDatasets(SNPhood.o))
     assertSubset(names(newDatasetsMapping), annotationDatasets(SNPhood.o))
     assertCharacter(as.character(newDatasetsMapping), any.missing = FALSE, min.chars = 1, unique = TRUE)
-
+    
     for (i in seq_len(length(newDatasetsMapping))) {
         
         oldR = names(newDatasetsMapping)[i]
@@ -2253,7 +2317,7 @@ renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
         
         # SLOT ANNOTATION
         names(SNPhood.o@annotation$files)[which(names(SNPhood.o@annotation$files)  ==  oldR)] = newR
-    
+        
         
         for (alleleCur in annotationReadGroups(SNPhood.o)) {
             
@@ -2277,11 +2341,11 @@ renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
             names(SNPhood.o@additionalResults$allelicBias$background)[which(names(SNPhood.o@additionalResults$allelicBias$background) ==  oldR)] = newR
             #TODO: dataset names
             # TODO: change implementation: just have the names appear once and use [[1]] and [[2]] or so for it throughout the object
-            }
-
+        }
+        
         
     }
-
+    
     SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     SNPhood.o
@@ -2305,7 +2369,9 @@ renameDatasets  <-  function(SNPhood.o, newDatasetsMapping, verbose = TRUE) {
 #' @seealso \code{\link{deleteDatasets}}, \code{\link{deleteRegions}}
 #' @export
 #' @import checkmate
-renameBins  <-  function(SNPhood.o, newBinsMapping, verbose = TRUE) {
+renameBins  <-  function(SNPhood.o, 
+                         newBinsMapping, 
+                         verbose = TRUE) {
     
     .checkObjectValidity(SNPhood.o, verbose = verbose)
     disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
@@ -2318,7 +2384,7 @@ renameBins  <-  function(SNPhood.o, newBinsMapping, verbose = TRUE) {
     assertList(newBinsMapping, any.missing = FALSE, min.len = 1, max.len = nBins(SNPhood.o))
     assertSubset(names(newBinsMapping), annotationBins(SNPhood.o))
     assertCharacter(unlist(newBinsMapping), any.missing = FALSE, min.chars = 1, unique = TRUE)
-
+    
     for (i in seq_len(length(newBinsMapping))) {
         
         oldR = names(newBinsMapping)[i]
@@ -2364,7 +2430,9 @@ renameBins  <-  function(SNPhood.o, newBinsMapping, verbose = TRUE) {
 #' @import checkmate
 #' @import GenomicRanges
 # @importFrom GenomicRanges mcols<-
-renameRegions <-  function(SNPhood.o, newRegionsMapping, verbose = TRUE) {
+renameRegions <-  function(SNPhood.o, 
+                           newRegionsMapping, 
+                           verbose = TRUE) {
     
     .checkObjectValidity(SNPhood.o, verbose = verbose)
     disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
@@ -2424,7 +2492,9 @@ renameRegions <-  function(SNPhood.o, newRegionsMapping, verbose = TRUE) {
 #' @export
 
 #' @import checkmate
-deleteRegions  <-  function(SNPhood.o, regions, verbose = TRUE) {
+deleteRegions  <-  function(SNPhood.o, 
+                            regions, 
+                            verbose = TRUE) {
     
     # Check types and validity of arguments     
     assertFlag(verbose)
@@ -2435,9 +2505,9 @@ deleteRegions  <-  function(SNPhood.o, regions, verbose = TRUE) {
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
     }
-
+    
     regions = .checkAndConvertRegionArgument(SNPhood.o, regions, nullAllowed = FALSE, maxLength = nRegions(SNPhood.o) - 1)
-
+    
     # SLOT annotation
     SNPhood.o@annotation$regions = SNPhood.o@annotation$regions[-regions,]
     
@@ -2458,7 +2528,7 @@ deleteRegions  <-  function(SNPhood.o, regions, verbose = TRUE) {
                 SNPhood.o@internal$readStartPos[[alleleCur]] [[fileCur]][regions] = NULL
                 SNPhood.o@internal$readWidth[[alleleCur]] [[fileCur]][regions] = NULL
             }
-           
+            
         }
     }
     
@@ -2467,8 +2537,8 @@ deleteRegions  <-  function(SNPhood.o, regions, verbose = TRUE) {
     
     # Reset that, because all slots are affected by the deletion of regions
     SNPhood.o@additionalResults = list()
-
-
+    
+    
     SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     SNPhood.o
@@ -2489,7 +2559,9 @@ deleteRegions  <-  function(SNPhood.o, regions, verbose = TRUE) {
 #' @seealso \code{\link{deleteRegions}}, \code{\link{deleteReadGroups}} 
 #' @export
 #' @import checkmate
-deleteDatasets  <-  function(SNPhood.o, datasets = NULL, verbose = TRUE) {
+deleteDatasets  <-  function(SNPhood.o, 
+                             datasets = NULL, 
+                             verbose = TRUE) {
     
     # Check types and validity of arguments     
     assertFlag(verbose)
@@ -2565,8 +2637,8 @@ deleteDatasets  <-  function(SNPhood.o, datasets = NULL, verbose = TRUE) {
             
         }
     }
-
-
+    
+    
     SNPhood.o@internal$disableObjectIntegrityChecking = disableIntegrityChecking
     
     
@@ -2596,7 +2668,10 @@ deleteDatasets  <-  function(SNPhood.o, datasets = NULL, verbose = TRUE) {
 #' @import checkmate
 #' @import GenomicRanges
 # @importFrom GenomicRanges GRanges mcols 
-annotationBins2 <- function(SNPhood.o, regions = NULL, fullAnnotation = FALSE, verbose = TRUE) {
+annotationBins2 <- function(SNPhood.o, 
+                            regions = NULL, 
+                            fullAnnotation = FALSE, 
+                            verbose = TRUE) {
     
     # Check types and validity of arguments 
     assertFlag(verbose)
@@ -2607,7 +2682,7 @@ annotationBins2 <- function(SNPhood.o, regions = NULL, fullAnnotation = FALSE, v
     if (SNPhood.o@config$onlyPrepareForDatasetCorrelation) {
         stop(.getErrorForOnlyPrepareSamplesCorrelation())
     }
-
+    
     regions = .checkAndConvertRegionArgument(SNPhood.o, regions, nullAllowed = TRUE, maxLength = NULL)
     
     assertFlag(fullAnnotation)
@@ -2619,7 +2694,7 @@ annotationBins2 <- function(SNPhood.o, regions = NULL, fullAnnotation = FALSE, v
     } else {
         userRegions.red.gr = SNPhood.o@annotation$regions
     }
-
+    
     res.l = .createBins(userRegions.red.gr, parameters(SNPhood.o), applyLastBinStrategy = TRUE, .getGenomeData(parameters(SNPhood.o)$assemblyVersion), verbose = TRUE)  
     
     binsPerRegion.vec = table(res.l$bins$origRegionIndex)
@@ -2697,7 +2772,10 @@ annotationBins2 <- function(SNPhood.o, regions = NULL, fullAnnotation = FALSE, v
 #' @seealso \code{\link{deleteReadGroups}} 
 #' @export
 #' @import checkmate
-convertToAllelicFractions  <-  function(SNPhood.o, roundDigits = 2, setNaNToZero = FALSE, verbose = TRUE) {
+convertToAllelicFractions  <-  function(SNPhood.o, 
+                                        roundDigits = 2, 
+                                        setNaNToZero = FALSE, 
+                                        verbose = TRUE) {
     
     # Check types and validity of arguments  
     assertFlag(verbose)
@@ -2786,8 +2864,10 @@ convertToAllelicFractions  <-  function(SNPhood.o, roundDigits = 2, setNaNToZero
 #' mapping = data.frame(samples = annotationDatasets(SNPhood.o), genotypeFile = rep(fileGenotypes, 2), sampleName = c("NA10847", "NA12890"))
 #' SNPhood.o = associateGenotypes(SNPhood.o, mapping)
 #' @import checkmate
-associateGenotypes <- function(SNPhood.o, genotypeMapping, verbose = TRUE) {
-
+associateGenotypes <- function(SNPhood.o, 
+                               genotypeMapping, 
+                               verbose = TRUE) {
+    
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose)
     disableIntegrityChecking = SNPhood.o@internal$disableObjectIntegrityChecking
@@ -2809,9 +2889,12 @@ associateGenotypes <- function(SNPhood.o, genotypeMapping, verbose = TRUE) {
     assertCharacter(genotypeMapping$samples, unique = TRUE)
     
     # Init the data frame that stores the external genotypes
-    res.df        = data.frame(alleleRef = rep(NA, nRegions(SNPhood.o)), alleleAlt = NA, genotypeMismatch = FALSE)
-    SNPhood.o@annotation$genotype$external  = res.df
-
+    res.df = data.frame(alleleRef = rep(NA, nRegions(SNPhood.o)), 
+                        alleleAlt = NA, 
+                        genotypeMismatch = FALSE)
+    
+    SNPhood.o@annotation$genotype$external = res.df
+    
     # Delete NA in the list if there are any
     genotypeMapping = genotypeMapping[!is.na(genotypeMapping$samples),]
     
@@ -2868,7 +2951,9 @@ associateGenotypes <- function(SNPhood.o, genotypeMapping, verbose = TRUE) {
 #' SNPhood.o = changeObjectIntegrityChecking(SNPhood.o, disable = TRUE)
 
 #' @import checkmate
-changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = TRUE) {
+changeObjectIntegrityChecking <- function(SNPhood.o, 
+                                          disable = FALSE, 
+                                          verbose = TRUE) {
     
     assertFlag(verbose)
     .checkObjectValidity(SNPhood.o, verbose = verbose) 
@@ -2887,9 +2972,10 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 
 #' @import checkmate
 # TODO: Change object copying
-.identifyGenotypeIncompatibilities <- function(SNPhood.o, verbose = TRUE) {
+.identifyGenotypeIncompatibilities <- function(SNPhood.o, 
+                                               verbose = TRUE) {
     
-
+    
     nMismatchesTotal = 0
     mismatches.l = list()
     
@@ -2904,9 +2990,9 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         
         nMismatchesFile = 0
         mismatches.l[[fileCur]] = c()
-
+        
         for (regionCur in 1:nRegions(SNPhood.o)) {
-
+            
             # Sum up all genotypes across read groups
             for (alleleCur in 1:nReadGroups(SNPhood.o)) {
                 
@@ -2931,12 +3017,12 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
             if (all(is.na(readPossVCF)) | all(is.na(readDerivedPresent))) {
                 next
             }
-
+            
             if (length(intersect(readDerivedPresent, readPossVCF)) == 0) {
                 nMismatchesFile  = nMismatchesFile  + 1
                 nMismatchesTotal = nMismatchesTotal + 1
                 mismatches.l[[fileCur]] = c(mismatches.l[[fileCur]], regionCur)
-
+                
                 # Flag region
                 SNPhood.o@annotation$genotype$external$genotypeMismatch[regionCur] = TRUE
             }
@@ -2949,7 +3035,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     
     if (verbose) message("Found ",nMismatchesTotal, " mismatches between the genotypes from the BAM file reads and the VCF information across all files")
     
-
+    
     SNPhood.o@annotation$genotype$mismatches = mismatches.l
     
     return(SNPhood.o)
@@ -2969,10 +3055,15 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 # #' @importFrom Biostrings unlist
 # TODO unlist remove or change: Error : object ‘unlist’ is not exported by 'namespace:Biostrings
 # TODO: remove the object as argument to prevent copying
-.extractGenotypesVCF <- function(SNPhood.o, file_vcf, sampleNamesObject, sampleNamesFile, yieldSize = NULL, verbose = TRUE) {
+.extractGenotypesVCF <- function(SNPhood.o, 
+                                 file_vcf, 
+                                 sampleNamesObject, 
+                                 sampleNamesFile, 
+                                 yieldSize = NULL, 
+                                 verbose = TRUE) {
     
     # Check types and validity of arguments         
-
+    
     assertFileExists(file_vcf, access = "r")
     assertCharacter(sampleNamesObject, any.missing = FALSE, min.len = 1, max.len = nDatasets(SNPhood.o))
     assertCharacter(sampleNamesFile  , any.missing = FALSE, min.len = 1, max.len = nDatasets(SNPhood.o))
@@ -3026,7 +3117,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         trimEmpty = TRUE,
         which = SNPs.gr
     )
-
+    
     
     # Parse VCF file   
     vcf <- readVcf(tab, genome = parameters(SNPhood.o)$assemblyVersion, param = param)
@@ -3043,7 +3134,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     if (length(which(!mcols(rowRanges(vcf))$paramRangeID %in% names(SNPs.gr)) == FALSE) > 0) {
         warning("Note: At least one SNP ID in the VCF file differs from the SNP ID in the SNPhood object despite identical positions.")
     }
-
+    
     
     if (verbose) message(" Found and imported ",length(rowRanges(vcf))," SNPs with genotype information across all samples out of all ",nRegions(SNPhood.o), " SNPs as defined in the SNPhood object.")
     
@@ -3053,13 +3144,13 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     #     while (nrow(vcf_yield <- readVcf(tab, genome=parameters(SNPhood.o)$assemblyVersion, param=param)))
     #         cat("vcf dim:", dim(vcf_yield), "\n")
     #     close(tab)
-
+    
     
     assertInteger(length(rowRanges(vcf)), lower = 1, len = 1, any.missing = FALSE)
     
     # Get a mapping of which SNP the entries correspond to
     mapping = sapply(seq_len(length(rowRanges(vcf))), function(x) {which(start(rowRanges(vcf))[x] == start(SNPs.gr))})
-
+    
     ref.vec = rep(NA, length(ref(vcf)))
     ref.vec[mapping] = as.character(ref(vcf))
     
@@ -3068,7 +3159,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     # If the REF allele is NA in the object, it has not yet been assigned.
     indexInit = which(is.na(SNPhood.o@annotation$genotype$external$alleleRef[mapping]))
     SNPhood.o@annotation$genotype$external$alleleRef[mapping[indexInit]] = ref.vec[mapping][indexInit]
-
+    
     indexToTest = intersect(which(!is.na(SNPhood.o@annotation$genotype$external$alleleRef)), not.na.index)
     if (length(indexToTest) > 0) {
         indexMismatch = which(ref.vec[indexToTest] != SNPhood.o@annotation$genotype$external$alleleRef[indexToTest])
@@ -3082,7 +3173,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         }
         
     }
-
+    
     alt.vec =  rep(NA, length(alt(vcf)))
     alt.vec [mapping] = as.character(unlist(sapply(seq_len(length(alt(vcf))), function(x) {paste0(as.character(unlist(alt(vcf)[x])), collapse = ",")})))
     alt.vec  = unlist(alt.vec)
@@ -3106,9 +3197,9 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         
         # Convert back
         SNPhood.o@annotation$genotype$external$alleleAlt[indexToTest] =  sapply(alleles.alt.l,paste0,collapse = ",")
-
+        
     }
-
+    
     
     
     assertSubset(SNPhood.o@annotation$genotype$external$alleleRef, c("A","C","G","T",NA))
@@ -3124,12 +3215,12 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         
         # Only change for the SNPs we have genotypes for
         SNPhood.o@annotation$genotype$external[mapping, colname] =  geno(vcf)$GT[, colIndex]                                           
-
+        
         # Set to NA if "."
         SNPhood.o@annotation$genotype$external[which(SNPhood.o@annotation$genotype$external[colname] == "."), colname] = NA
     }
     
-
+    
     # TODO: genotypes.l
     
     SNPhood.o
@@ -3137,7 +3228,10 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 
 
 #' @import checkmate
-.checkAndConvertRegionArgument <- function(SNPhood.o, regions, nullAllowed = TRUE, maxLength = NULL) {
+.checkAndConvertRegionArgument <- function(SNPhood.o, 
+                                           regions, 
+                                           nullAllowed = TRUE, 
+                                           maxLength = NULL) {
     
     if (testNull(maxLength)) maxLength = nRegions(SNPhood.o)
     
@@ -3164,11 +3258,13 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 }
 
 #' @import checkmate
-.checkAndConvertReadGroupArgument <- function(SNPhood.o, readGroup) {
-
+.checkAndConvertReadGroupArgument <- function(SNPhood.o, 
+                                              readGroup) {
+    
     
     if (nReadGroups(SNPhood.o) == 1) {
-        assert(checkNull(readGroup), checkChoice(readGroup, annotationReadGroups(SNPhood.o)))
+        assert(checkNull(readGroup), 
+               checkChoice(readGroup, annotationReadGroups(SNPhood.o)))
         
         if (testNull(readGroup)) {
             readGroup = annotationReadGroups(SNPhood.o)
@@ -3184,8 +3280,12 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 }
 
 #' @import checkmate
-.checkAndConvertDatasetArgument <- function(SNPhood.o, datasets, nullAllowed = TRUE, maxLength = NULL, returnNames = TRUE) {
-
+.checkAndConvertDatasetArgument <- function(SNPhood.o, 
+                                            datasets, 
+                                            nullAllowed = TRUE, 
+                                            maxLength = NULL, 
+                                            returnNames = TRUE) {
+    
     if (testNull(maxLength)) maxLength = nDatasets(SNPhood.o)
     
     minLength = ifelse(nullAllowed, 0, 1)
@@ -3257,11 +3357,14 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 }
 
 
-.initSNPhoodObject <- function(SNPhood.o, files.df, readGroups, onlyPrepareForDatasetCorrelation) {
+.initSNPhoodObject <- function(SNPhood.o, 
+                               files.df, 
+                               readGroups, 
+                               onlyPrepareForDatasetCorrelation) {
     
     par.l = parameters(SNPhood.o)
     nRegionsCur = nRegions(SNPhood.o)
-   
+    
     stopifnot(!SNPhood.o@internal$isInitialized)
     
     assertCharacter(readGroups, min.len = 1, min.chars = 1)
@@ -3277,7 +3380,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         SNPhood.o@annotation$genotype$readsDerived [[alleleCur]]  = list()
         SNPhood.o@internal$readStartPos[[alleleCur]] = list()
         SNPhood.o@internal$readWidth[[alleleCur]] = list()
-  
+        
         
         # Iterate over all unique individual input files and signal files
         if (!all(is.na(files.df$input))) {
@@ -3330,7 +3433,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                 } 
             }
         }
-       
+        
         
         
         
@@ -3342,7 +3445,8 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 }
 
 
-.createSNPhoodObject <- function(par.l, onlyPrepareForDatasetCorrelation) {
+.createSNPhoodObject <- function(par.l, 
+                                 onlyPrepareForDatasetCorrelation) {
     
     SNPhood.o  <-  new("SNPhood", 
                        annotation        = list(regions = NULL, 
@@ -3369,12 +3473,16 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                        ),
                        additionalResults   = list()
     )
- 
+    
     SNPhood.o
 }
 
 
-.BAMHeaderConsistencyChecks <- function(par.l, annotationRegions, signalFileCur, expectedReadGroups = NULL, verbose = TRUE) {
+.BAMHeaderConsistencyChecks <- function(par.l, 
+                                        annotationRegions, 
+                                        signalFileCur, 
+                                        expectedReadGroups = NULL, 
+                                        verbose = TRUE) {
     
     assertCharacter(signalFileCur, any.missing = FALSE)
     assertFileExists(signalFileCur, access = "r")
@@ -3400,27 +3508,27 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
     definedChr = unique(as.character(seqnames(annotationRegions)))
     unknownChr = which(!names(chrSizes) %in% definedChr)
     if (length(unknownChr) > 0) {
-      chrSizes = chrSizes[-unknownChr]
+        chrSizes = chrSizes[-unknownChr]
     }
     
     # Consistency checks for all chromosomes from the user regions
     for (chrCur in definedChr) {
-      
-      # Check if defined in BAM header
-      if (!chrCur %in% names(chrSizes)) {
-        stop("Chromosome ", chrCur, "(from the user-defined regions) not defined in BAM file ", signalFileCur)
-      }
-      
-      # Check if we have the chromosome length available in the chrSizes.df object
-      if (!chrCur %in% rownames(chrSizes.df)) {
-        stop("Could not find ", chrCur," in automatically retrieved list of chromosome lengths. Only chromosomes ", paste0(rownames(chrSizes.df), collapse = ","), " are available. Please remove all references to chromosome ", chrCur, " in the BAM file.", sep = "")
-      }
-      
-      # Check if size is identical to what has been automatically retrieved
-      if (chrSizes[which(names(chrSizes) == chrCur)] != chrSizes.df[chrCur,]$size) {
-        stop("A mismatch was detected for the chromosome size of ", chrCur," (BAM file: ", chrSizes[which(names(chrSizes) == chrCur)] , ", specified genome assembly: ", chrSizes.df[chrCur,]$size,"). ", sep = "")
-      }
-      
+        
+        # Check if defined in BAM header
+        if (!chrCur %in% names(chrSizes)) {
+            stop("Chromosome ", chrCur, "(from the user-defined regions) not defined in BAM file ", signalFileCur)
+        }
+        
+        # Check if we have the chromosome length available in the chrSizes.df object
+        if (!chrCur %in% rownames(chrSizes.df)) {
+            stop("Could not find ", chrCur," in automatically retrieved list of chromosome lengths. Only chromosomes ", paste0(rownames(chrSizes.df), collapse = ","), " are available. Please remove all references to chromosome ", chrCur, " in the BAM file.", sep = "")
+        }
+        
+        # Check if size is identical to what has been automatically retrieved
+        if (chrSizes[which(names(chrSizes) == chrCur)] != chrSizes.df[chrCur,]$size) {
+            stop("A mismatch was detected for the chromosome size of ", chrCur," (BAM file: ", chrSizes[which(names(chrSizes) == chrCur)] , ", specified genome assembly: ", chrSizes.df[chrCur,]$size,"). ", sep = "")
+        }
+        
     }
     
     
@@ -3450,7 +3558,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
             }
         }
         
-       
+        
         
         if (length(unique(readGroups)) < 2) {
             readGroupSpecificityTmp = FALSE
@@ -3468,7 +3576,15 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 #' @importFrom Biostrings nucleotideFrequencyAt subseq
 #' @import GenomicRanges
 # @importFrom GenomicRanges strand start
-.extractAndNormalize <- function(par.l, annotationRegions, readGroups, SNPPos.gr, files.vec, individualName, bins.l, type, verbose = TRUE) {
+.extractAndNormalize <- function(par.l, 
+                                 annotationRegions, 
+                                 readGroups, 
+                                 SNPPos.gr, 
+                                 files.vec, 
+                                 individualName,
+                                 bins.l, 
+                                 type, 
+                                 verbose = TRUE) {
     
     # TODO: Potential optimization: Save results of individual files so they don't have to be parsed multiple times
     
@@ -3494,13 +3610,13 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                      readWidth          = NULL,
                      readCountsBinned   = NULL,
                      readCountsUnbinned = NULL
-                     )
+    )
     
     # Can be ignored for input
     if (type == "signal")  {
         
         for (alleleCur in readGroups) {
- 
+            
             results.l$genotypes[[alleleCur]] = array(data = rep(0,4), dim = c(4, nRegionsCur), dimnames = list(c("A", "C", "G", "T")))
             
             if (length(readGroups) > 1) {
@@ -3512,8 +3628,8 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
             }
         }
     }
-   
-
+    
+    
     nFilesProcessed = 0
     
     for (fileCur in files.vec) {
@@ -3529,7 +3645,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         ##################
         # Various checks #
         ##################
-
+        
         expectedReadGroups = readGroups
         
         # Only check read group consistency among signal files
@@ -3544,7 +3660,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
             
             start.timeTemp  <-  Sys.time()
             if (!par.l$onlyPrepareForDatasetCorrelation) {
-    
+                
                 if (verbose) message(" Extract data from BAM file ", fileCur," for the SNPs only (this may take a while)...")
                 bamSignalSNP = .extractFromBAM(SNPPos.gr, fileCur, .getFieldsForBAMParsing("SNPs"), par.l,  verbose)
                 
@@ -3558,12 +3674,12 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                 
                 if (verbose) message(" Determine genotype distribution at original user positions for A, C, G, and T...")
                 
-
+                
                 
                 for (alleleCur in readGroups) {
                     if (verbose) message("  Read group ",alleleCur)
-
-                   
+                    
+                    
                     res.l = .filterReads(bamSignalSNP, as.character(strand(SNPPos.gr)), alleleCur, par.l$strand)
                     bamSignal_filteredCurSNP = res.l$bamObj
                     
@@ -3580,7 +3696,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                 }
                 
                 
-                 }
+            }
             .printExecutionTime(start.timeTemp, verbose)
             
         }
@@ -3620,7 +3736,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
             bamFile_filteredCur = res.l$bamObj
             
             if (verbose & nFilteredReadsSignal > 0) message("   Filtered ", nFilteredReadsSignal," reads out of ", nReadsSumAll," in file ", fileCur," because of strand and read group")
-        
+            
             nReads.vec = unlist(lapply(bamFile_filteredCur, function(x) length((x$pos))), use.names = FALSE)
             nReadsSum = sum(nReads.vec)
             if (nReadsSum  ==  0) warning("   No reads were found in file ", fileCur," that overlap the user regions for the read group ", alleleCur,".")
@@ -3671,7 +3787,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         
         # Delete large object and explicitly call the garbage collector because bamSignal may be a large object
         rm(bamFile)
-
+        
         
     } #end for all files
     
@@ -3724,7 +3840,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         }
         
     } # end if (nFilesProcessed > 1)
-
+    
     #####################
     # Adjust background #
     #####################
@@ -3752,7 +3868,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
         
     }
     
-
+    
     results.l
     
 }
@@ -3770,7 +3886,10 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
 #SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]] = c(SNPhood.o@internal$sizeFactors[[alleleCur]] [[inputFileSetCur]], sizeFactors.vec[individualCur])
 
 
-.determineHeterozygosity <- function (SNPhood.o, readGroupsToTest = c("paternal", "maternal"), takeOnlyMostAbundantOnePerReadGroup = TRUE, verbose = TRUE) {
+.determineHeterozygosity <- function (SNPhood.o, 
+                                      readGroupsToTest =  annotationReadGroups(SNPhood.o), 
+                                      takeOnlyMostAbundantOnePerReadGroup = TRUE, 
+                                      verbose = TRUE) {
     
     assertFlag(verbose)
     assertSubset(readGroupsToTest, annotationReadGroups(SNPhood.o))
@@ -3787,7 +3906,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
             
             genotypeDist.vec = c()
             isNA = FALSE
-
+            
             for (readGroupCur in readGroupsToTest) {
                 
                 distCur = SNPhood.o@annotation$genotype$readsDerived[[readGroupCur]][[datasetCur]][,j]
@@ -3808,7 +3927,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                     isNA = TRUE
                     break
                 }
-
+                
             }
             
             # Take most abundant genotype in each read group and check their identity
@@ -3820,7 +3939,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o, disable = FALSE, verbose = 
                     heterozygous.m[j, i] = FALSE
                 }
             }
-           
+            
             
         }
         

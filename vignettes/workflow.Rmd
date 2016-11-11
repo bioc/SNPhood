@@ -360,7 +360,7 @@ Note that you now have two *SNPhood* objects in your workspace: One without and 
 You can now combine clustering and genotype one more time and perform the clustering only on the signal averaged across all high-genotype individuals at each SNP to increase the signal to noise ratio (analogous to the analysis in Figure 6 in Grubert et al. [1]):
 
 ```{r plotGenotypePerCluster, echo=TRUE}
-p = plotGenotypesPerCluster(SNPhood_merged.o, printPlot = FALSE, printBinLabels = TRUE)
+p = plotGenotypesPerCluster(SNPhood_merged.o, printPlot = FALSE, printBinLabels = TRUE, returnOnlyPlotNotObject = TRUE)
 p[[1]]
 ```
 

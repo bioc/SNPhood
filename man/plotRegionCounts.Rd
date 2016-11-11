@@ -9,7 +9,7 @@ plotRegionCounts(SNPhood.o, regions = NULL, datasets = NULL,
   plotStartPos = NULL, plotEndPos = NULL, ylim = NULL,
   plotRegionBoundaries = FALSE, plotRegionLabels = FALSE,
   maxWidthLabels = NULL, colorPalette = "Set1", sizePoints = 4,
-  type = "p", plotGraph = TRUE, fileToPlot = NULL, verbose = FALSE)
+  type = "p", printPlot = TRUE, fileToPlot = NULL, verbose = FALSE)
 }
 \arguments{
 \item{SNPhood.o}{Object of class \code{\linkS4class{SNPhood}}}
@@ -52,7 +52,8 @@ This parameter has no effect if type is set to "l".}
 
 \item{type}{Character(1). "p" or "l". Default "p". What type of plot should be drawn, points ("p") or lines ("l")?}
 
-\item{plotGraph}{Logical(1). Default TRUE. Should the graphs be plotted to the current graphics device?}
+\item{printPlot}{Logical(1). Default TRUE. Should the plots be printed? Only relevant if \code{fileToPlot} is set to NULL; otherwise, the plots
+are always printed to the output file.}
 
 \item{fileToPlot}{Character(1) or \code{NULL}. Default \code{NULL}. 
 Filename of the PDF file for the output plots.

@@ -537,6 +537,7 @@ results <- function(SNPhood.o, type, elements = NULL) {
 #             )
 
 
+#' @importFrom utils tail
 setMethod("show",
           "SNPhood",
           function(object) {

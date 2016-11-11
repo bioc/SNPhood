@@ -8,7 +8,7 @@ plotAllelicBiasResultsOverview(SNPhood.o, regions = 1, datasets = NULL,
   plotChr = NULL, plotStartPos = NULL, plotEndPos = NULL, ylim = NULL,
   plotRegionBoundaries = FALSE, plotRegionLabels = FALSE,
   signThreshold = 0.05, pValueSummary = "min", maxWidthLabels = NULL,
-  colorPalette = "Set1", sizePoints = 4, plotGraph = TRUE,
+  colorPalette = "Set1", sizePoints = 4, printPlot = TRUE,
   fileToPlot = NULL, verbose = FALSE)
 }
 \arguments{
@@ -53,7 +53,8 @@ The colors for the read groups within each datasets are based on the colors for 
 \item{sizePoints}{Numeric(1). Default 4. Size of the points that are drawn in the plot (if type is set to the default value of "p"). 
 This parameter has no effect if type is set to "l".}
 
-\item{plotGraph}{Logical(1). Default TRUE. Should the graphs be plotted to the current graphics device?}
+\item{printPlot}{Logical(1). Default TRUE. Should the plots be printed? Only relevant if \code{fileToPlot} is set to NULL; otherwise, the plots
+are always printed to the output file.}
 
 \item{fileToPlot}{Character(1) or \code{NULL}. Default \code{NULL}. 
 Filename of the PDF file for the output plots.

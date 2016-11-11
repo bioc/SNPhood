@@ -5,7 +5,7 @@
 \title{Plot genotype frequencies of regions across datasets.}
 \usage{
 plotGenotypesPerSNP(SNPhood.o, regions = NULL, fileToPlot = NULL,
-  verbose = FALSE)
+  returnOnlyPlotNotObject = FALSE, verbose = FALSE)
 }
 \arguments{
 \item{SNPhood.o}{Object of class \code{\linkS4class{SNPhood}}}
@@ -16,6 +16,10 @@ between 1 and the total number of regions as defined in the object) or their ann
 \item{fileToPlot}{Character(1) or \code{NULL}. Default \code{NULL}. 
 Filename of the PDF file for the output plots.
 If set to \code{NULL}, plots will be plotted to the currently active device.}
+
+\item{returnOnlyPlotNotObject}{Logical(1). Default FALSE. If set to TRUE, only the plots are returned but not the actual object. 
+Otherwise, for consistancy among the various visualization functions, the SNPhood object is always returned, while the plots are
+either written to a PDF file as specified by the parameter fileToPlot and/or to the currently active graphics device (i.e., the console usually)}
 
 \item{verbose}{Logical(1). Default FALSE. Should the verbose mode (i.e., diagnostic messages during execution of the script) be enabled?}
 }
