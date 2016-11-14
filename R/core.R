@@ -3444,7 +3444,7 @@ changeObjectIntegrityChecking <- function(SNPhood.o,
     SNPhood.o
 }
 
-
+#' @importFrom methods new 
 .createSNPhoodObject <- function(par.l, 
                                  onlyPrepareForDatasetCorrelation) {
     

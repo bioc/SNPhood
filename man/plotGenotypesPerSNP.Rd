@@ -18,8 +18,8 @@ Filename of the PDF file for the output plots.
 If set to \code{NULL}, plots will be plotted to the currently active device.}
 
 \item{returnOnlyPlotNotObject}{Logical(1). Default FALSE. If set to TRUE, only the plots are returned but not the actual object. 
-Otherwise, for consistancy among the various visualization functions, the SNPhood object is always returned, while the plots are
-either written to a PDF file as specified by the parameter fileToPlot and/or to the currently active graphics device (i.e., the console usually)}
+Otherwise, for consistancy among the various visualization functions, the \code{\linkS4class{SNPhood}}  object is always returned, while the plots are
+either written to a PDF file as specified by the parameter \code{fileToPlot} and/or to the currently active graphics device (i.e., the console usually)}
 
 \item{verbose}{Logical(1). Default FALSE. Should the verbose mode (i.e., diagnostic messages during execution of the script) be enabled?}
 }

@@ -1486,10 +1486,6 @@ plotAndSummarizeAllelicBiasTest  <- function(SNPhood.o,
                 "It might possible that only the last graph is shown.")
     }
 
-    assertChoice(corMeasure, choices = c("pearson", "spearman", "kendall"))
-    
-
-
    
     if (!testList(SNPhood.o@additionalResults$allelicBias, min.len = 4, any.missing = FALSE)) {
         stop("Could not find the results of the allelic bias test. Did you run the function testForAllelicBiases before?")
