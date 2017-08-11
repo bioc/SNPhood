@@ -386,7 +386,7 @@
     }, error = function(e) {
         
         warning("Could not obtain chromosome sizes using GenomeInfoDb, try fallback implementation...\n")
-        assertChoice(genome, c("hg19","hg38"))
+        assertChoice(genome, c("hg19","hg38", "mm10", "mm9"))
 
         if (genome == "hg19") {
             chrSizes = list(
@@ -444,6 +444,58 @@
                 "chr21" =     46709983,
                 "chrM" =     16569
             )
+            
+        } else if (genome == "mm9") {
+          chrSizes = list(
+            "chr1" = 197195432,
+            "chr2" =   181748087,
+            "chr3" =     159599783,
+            "chr4" =     155630120,
+            "chr5" =     152537259,
+            "chr6" =     149517037,
+            "chr7" =     152524553,
+            "chr8" =     131738871,
+            "chr9" =     124076172,
+            "chr10" =     129993255,
+            "chr11" =     121843856,
+            "chr12" =     121257530,
+            "chr13" =     120284312,
+            "chr14" =     125194864,
+            "chr15" =     103494974,
+            "chr16" =     98319150,
+            "chr17" =     95272651,
+            "chr18" =     90772031,
+            "chr19" =     61342430,
+            "chrX" =     166650296,
+            "chrY" =     15902555
+          ) 
+          
+          
+        } else if (genome == "mm10") {
+          chrSizes = list(
+            "chr1" = 195471971,
+            "chr2" =   182113224,
+            "chr3" =     160039680,
+            "chr4" =     156508116,
+            "chr5" =     151834684,
+            "chr6" =     149736546,
+            "chr7" =     145441459,
+            "chr8" =     129401213,
+            "chr9" =     124595110,
+            "chr10" =     130694993,
+            "chr11" =     122082543,
+            "chr12" =     120129022,
+            "chr13" =     120421639,
+            "chr14" =     124902244,
+            "chr15" =     104043685,
+            "chr16" =     98207768,
+            "chr17" =     94987271,
+            "chr18" =     90702639,
+            "chr19" =     61431566,
+            "chrX" =     171031299,
+            "chrY" =      91744698
+          )
+          
         }
         
         
@@ -722,21 +774,19 @@
     userRegions.df$start  = userRegions.df$start - par.l$regionSize
     userRegions.df$end    = userRegions.df$end + par.l$regionSize
     
-    index1 = which(userRegions.df$start < 0)
-    if (length(index1) > 0) {
-        warning("For ", length(index1), " user regions, the chromosome starts have been reached ",
-                "after incorporating the regionSize parameter. ",
-                "The start positions have therefore been automatically set to 0.")  
-        userRegions.df$start[which(userRegions.df$start < 0)] = 0
-    }
-    
-    index2 = which((userRegions.df$end + par.l$regionSize) > chrSizes.df[userRegions.df$chr,]$size)
-    if (length(index2) > 0) {
-        warning("For ", length(index2), " user regions, the chromosome ends have been reached ",
-                "after incorporating the regionSize parameter. ",
-                "The end positions have therefore been automatically set to the size of the chromosome.")  
-        userRegions.df$end[which(userRegions.df$end > chrSizes.df[userRegions.df$chr,]$size)] = 
-            chrSizes.df[userRegions.df$chr[which(userRegions.df$end > chrSizes.df[userRegions.df$chr,]$size)],]$size
+    indexRegions = unique(c(which(userRegions.df$start < 0), which((userRegions.df$end + par.l$regionSize) > chrSizes.df[userRegions.df$chr,]$size)))
+
+    if (length(indexRegions) > 0) {
+      
+      invalidRegions = paste0(userRegions.df$chr[indexRegions], ":", 
+                              userRegions.df$start[indexRegions], "-", 
+                              userRegions.df$end[indexRegions], "(",
+                              userRegions.df$annotation[indexRegions], ")", collapse = ", ")
+      
+        stop("For the following ", length(indexRegions), " user regions, either the chromosome starts or ends have been exceeded ",
+             "after incorporating the regionSize parameter:", invalidRegions,
+             ". Delete or modify these regions from your regions file or adjust your regionSize parameter accordingly.")  
+
         
     }
     
@@ -1017,75 +1067,138 @@
 
 #' @importFrom BiocParallel bplapply bpok
 #' @import checkmate 
-.execInParallelGen <- function(nCores, 
-                               returnAsList, 
-                               iteration, 
-                               verbose = TRUE, 
-                               functionName, 
-                               ...) {
+# .execInParallelGen <- function(nCores, 
+#                                returnAsList, 
+#                                iteration, 
+#                                verbose = TRUE, 
+#                                functionName, 
+#                                ...) {
+#     
+#     start.time  <-  Sys.time()
+# 
+#     assertInt(nCores, lower = 1)
+#     assertFlag(returnAsList)
+#     assertFunction(functionName)
+#     assertVector(iteration, any.missing = FALSE, min.len = 1)
+#     
+#     res.l = list()
+#     
+#     if (nCores > multicoreWorkers()) {
+#         nCores = multicoreWorkers()
+#     }
+# 
+#     if (nCores > 1) {
+#         
+#         res.l = tryCatch( {
+#             bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores))
+# 
+#         }, error = function(e) {
+#             warning("An error occured while executing the function with ", 
+#                     nCores," CPUs. Try one last time in parallel...")
+#             #lapply(iteration, functionName, ...)
+#         }
+#         )
+#         
+#         failedTasks = which(!bpok(res.l))
+#         if (length(failedTasks) > 0) {
+#             warning("At least one task failed while executing in parallel, ",
+#                     "attempting to rerun those that failed: ",
+#                     res.l[[failedTasks[1]]])
+#             
+#             res.l = tryCatch( {
+#                 bplapply(iteration, 
+#                          functionName, 
+#                          ..., 
+#                          BPPARAM = .initBiocParallel(nCores), 
+#                          BPREDO = res.l)
+#                 
+#             }, error = function(e) {
+#                 warning("Once again, an error occured while executing the function ",
+#                         "with multiple CPUs. Trying again using only only one CPU...")
+#                 lapply(iteration, functionName, ...)
+#             }
+#             )
+#         }
+#         
+#     } else {
+#         res.l = lapply(iteration, functionName, ...)
+#     }
+# 
+#     
+#     if (verbose) message(" Finished execution using ",nCores," cores.")
+#     .printExecutionTime(start.time, verbose = verbose)
+#     
+#     if (!returnAsList) {
+#         return(unlist(res.l))
+#     }
+#     
+#     res.l
+#     
+# }
     
-    start.time  <-  Sys.time()
-
-    assertInt(nCores, lower = 1)
-    assertFlag(returnAsList)
-    assertFunction(functionName)
-    assertVector(iteration, any.missing = FALSE, min.len = 1)
+.execInParallelGen <- function(nCores, returnAsList = TRUE, listNames = NULL, iteration, abortIfErrorParallel = TRUE, verbose = FALSE, functionName, ...) {
+  
+  start.time  <-  Sys.time()
+  
+  assertInt(nCores, lower = 1)
+  assertFlag(returnAsList)
+  assertFunction(functionName)
+  assertVector(iteration, any.missing = FALSE, min.len = 1)
+  assert(checkNull(listNames), checkCharacter(listNames, len = length(iteration)))
+  
+  res.l = list()
+  
+  if (nCores > 1) {
     
-    res.l = list()
+    res.l = tryCatch( {
+      bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores))
+      
+    }#, error = function(e) {
+    #     warning("An error occured while executing the function with multiple CPUs. Trying again using only only one CPU...")
+    #     lapply(iteration, functionName, ...)
+    # }
+    )
     
-    if (nCores > multicoreWorkers()) {
-        nCores = multicoreWorkers()
-    }
-
-    if (nCores > 1) {
+    failedTasks = which(!bpok(res.l))
+    if (length(failedTasks) > 0) {
+      warning("At least one task failed while executing in parallel, attempting to rerun those that failed: ",res.l[[failedTasks[1]]])
+      if (abortIfErrorParallel) stop()
+      
+      res.l = tryCatch( {
+        bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores), BPREDO = res.l)
         
-        res.l = tryCatch( {
-            bplapply(iteration, functionName, ..., BPPARAM = .initBiocParallel(nCores))
-
-        }, error = function(e) {
-            warning("An error occured while executing the function with ", 
-                    nCores," CPUs. Try one last time in parallel...")
-            #lapply(iteration, functionName, ...)
-        }
-        )
-        
-        failedTasks = which(!bpok(res.l))
-        if (length(failedTasks) > 0) {
-            warning("At least one task failed while executing in parallel, ",
-                    "attempting to rerun those that failed: ",
-                    res.l[[failedTasks[1]]])
-            
-            res.l = tryCatch( {
-                bplapply(iteration, 
-                         functionName, 
-                         ..., 
-                         BPPARAM = .initBiocParallel(nCores), 
-                         BPREDO = res.l)
-                
-            }, error = function(e) {
-                warning("Once again, an error occured while executing the function ",
-                        "with multiple CPUs. Trying again using only only one CPU...")
-                lapply(iteration, functionName, ...)
-            }
-            )
-        }
-        
-    } else {
-        res.l = lapply(iteration, functionName, ...)
-    }
-
-    
-    if (verbose) message(" Finished execution using ",nCores," cores.")
-    .printExecutionTime(start.time, verbose = verbose)
-    
-    if (!returnAsList) {
-        return(unlist(res.l))
+      }, error = function(e) {
+        warning("Once again, an error occured while executing the function with multiple CPUs. Trying again using only only one CPU...")
+        if (abortIfErrorParallel) stop()
+        lapply(iteration, functionName, ...)
+      }
+      )
     }
     
-    res.l
-    
+  } else {
+    res.l = lapply(iteration, functionName, ...)
+  }
+  
+  end.time  <-  Sys.time()
+  
+  if (nCores > multicoreWorkers()) {
+    nCores = multicoreWorkers()
+  }
+  
+  if (verbose) message(" Finished execution using ",nCores," cores. TOTAL RUNNING TIME: ", round(end.time - start.time, 1), " ", units(end.time - start.time),"\n")
+  
+  
+  if (!returnAsList) {
+    return(unlist(res.l))
+  }
+  
+  if (!is.null(listNames)) {
+    names(res.l) = listNames
+  }
+  
+  res.l
+  
 }
-    
 
 
 #' @importFrom Rsamtools countBam scanBam ScanBamParam

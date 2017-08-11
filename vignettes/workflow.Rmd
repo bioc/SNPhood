@@ -328,7 +328,7 @@ The warning can be ignored here, it simply informs us that multiple plots have b
 Next you can integrate the genotype from external sources for our regions. For this, you first create a data frame to specify which datasets to integrate genotypes with, the path to the VCF file that provides the genotypes, and the name of the column in the VCF file that corresponds to the dataset.
 
 ```{r associategenotype, echo=TRUE}
-(mapping = genotypeMapping = data.frame(samples = annotationDatasets(SNPhood.o),
+(mapping = data.frame(samples = annotationDatasets(SNPhood.o),
                                        genotypeFile = rep(fileGenotypes, 2),
                                        sampleName = c("NA10847", "NA12890")
                              ))
