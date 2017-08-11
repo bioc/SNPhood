@@ -639,7 +639,7 @@ setMethod("show",
     
     if (!is.null(object@internal$disableObjectIntegrityChecking)) {
         if (object@internal$disableObjectIntegrityChecking == FALSE) {
-            if (verbose) message("Check object integrity and validity. For large objects, this may take some time. Use the function changeObjectIntegrityChecking to disable this check for the object.")
+            # if (verbose) message("Check object integrity and validity. For large objects, this may take some time. Use the function changeObjectIntegrityChecking to disable this check for the object.")
             
         }
     }
@@ -662,6 +662,8 @@ setMethod("show",
     
     valid = TRUE
     msg   = NULL
+    
+    #saveRDS(object,file = "/home/christian/SNPhood.rds")
     
     # Skip validity check if object has not yet been fully constructed
     if (object@internal$disableObjectIntegrityChecking) return(TRUE) 
@@ -924,7 +926,7 @@ setMethod("show",
             msg = c(msg, "The element plot_labelBins in the slot \"internal\" must be of type character.\n")
         }
         
-        if (!testSubset(names(object@internal$plot_labelBins), seq_len(length(object@annotation$bins)))) {
+        if (!testSubset(as.numeric(names(object@internal$plot_labelBins)), seq_len(length(object@annotation$bins)))) {
             valid = FALSE
             msg = c(msg, "The names of the element plot_labelBins in the slot \"internal\" must be from 1:", length(object@annotation$bins),".\n")
         }
@@ -972,7 +974,7 @@ setMethod("show",
                     for (l in seq_len(length(object@annotation$regions))) {
                         if (!testInteger(object@internal$readStartPos[[i]][[j]][[l]], lower = 1, any.missing = FALSE)) {
                             valid = FALSE
-                            msg = c(msg, "At least one element in readStartPos in the slot \"internal\" is invalid and does not contain a vector of type Integer.\n")
+                            msg = c(msg, paste0("At least one element in readStartPos in the slot \"internal\" is invalid and does not contain a vector of type Integer for read group ", i, ", and sample ", j, ".\n"))
                         } 
                     }
                    
