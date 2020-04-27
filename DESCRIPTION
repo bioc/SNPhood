@@ -1,7 +1,7 @@
 Package: SNPhood
 Title: SNPhood: Investigate, quantify and visualise the epigenomic
     neighbourhood of SNPs using NGS data
-Version: 1.18.0
+Version: 1.19.0
 Authors@R: c(person("Christian", "Arnold", email =
         "christian.arnold@embl.de", role = c("cre","aut")),
         person("Pooja", "Bhat", email = "pooja.bhat@embl.de", role =
