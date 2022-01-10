@@ -354,12 +354,12 @@
 }
 
 #' @import checkmate
-#' @importFrom GenomeInfoDb fetchExtendedChromInfoFromUCSC 
+#' @importFrom GenomeInfoDb  getChromInfoFromUCSC
 .getGenomeData <- function(genome, 
                            includeChrM = FALSE){
     
     
-    # See ?fetchExtendedChromInfoFromUCSC for a list of supported chromosome sizes
+    # See ?getChromInfoFromUCSC (previously: fetchExtendedChromInfoFromUCSC) for a list of supported chromosome sizes
     assertChoice(genome, c("hg38", "hg19", "hg18", "mm10", "mm9", "dm3", "sacCer3", "sacCer2"))
     assertFlag(includeChrM)
 
@@ -368,16 +368,18 @@
     
     # use a try-catch construct in case the default approach to determine chromosome sizes fails
     result = tryCatch( {
-        chromInfo.df = suppressWarnings(fetchExtendedChromInfoFromUCSC(genome))
-        chromInfo.df = chromInfo.df[which(chromInfo.df$SequenceRole == "assembled-molecule"),]
         
-        rowChrM = which(chromInfo.df$UCSC_seqlevel == "chrM")
+        chromInfo.df = suppressWarnings(getChromInfoFromUCSC(genome))
+        # Has been deprecated: chromInfo.df = suppressWarnings(fetchExtendedChromInfoFromUCSC(genome))
+        chromInfo.df = chromInfo.df[-which(grepl("_", chromInfo.df$chrom, fixed = TRUE)),]
+        
+        rowChrM = which(chromInfo.df$chrom == "chrM")
         if (!includeChrM & length(rowChrM) == 1) {  
             chromInfo.df =  chromInfo.df[-rowChrM,]
         }
         # Quickly transform to a regular data frame
-        chrSizes.df = data.frame(chr = chromInfo.df$UCSC_seqlevel, 
-                                 size = as.numeric(chromInfo.df$UCSC_seqlength))
+        chrSizes.df = data.frame(chr = chromInfo.df$chrom, 
+                                 size = as.numeric(chromInfo.df$length))
         
         rownames(chrSizes.df) = chrSizes.df$chr
         
