@@ -33,15 +33,15 @@ Description: To date, thousands of single nucleotide polymorphisms (SNPs) have
     binding patterns around the SNPs of interest.
 Imports:
     DESeq2,
-	  cluster,
-	  ggplot2,
+	cluster,
+	ggplot2,
     lattice,
-    GenomeInfoDb,
+    GenomeInfoDb (>= 1.34.8),
     BiocParallel,
-	  VariantAnnotation,
-	  BiocGenerics,
-	  IRanges,
-	  methods,
+	VariantAnnotation,
+	BiocGenerics,
+	IRanges,
+	methods,
     SummarizedExperiment,
     RColorBrewer,
     Biostrings,
@@ -52,17 +52,17 @@ Imports:
     utils,
     reshape2,
     scales,
-	  S4Vectors
+	S4Vectors
 Depends:
     R (>= 3.1),
-	  GenomicRanges,
+	GenomicRanges,
     Rsamtools,
     data.table,
     checkmate
 Suggests:
     BiocStyle,
     knitr,
-	  pryr,
+	pryr,
     rmarkdown,
     SNPhoodData,
     corrplot
@@ -71,5 +71,5 @@ biocViews: Software
 License: LGPL (>= 3)
 LazyData: true
 URL: https://bioconductor.org/packages/SNPhood
-BugReports: christian.arnold@embl.de
+BugReports: mailto:<christian.arnold@embl.de>
 RoxygenNote: 5.0.1

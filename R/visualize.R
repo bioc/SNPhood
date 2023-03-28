@@ -1455,7 +1455,7 @@ plotRegionCounts <- function(SNPhood.o,
 #' @template fileToPlot
 #' @return A named list with various elements, each of which summarizes the allelic bias tests with a different focus. TODO
 #' @examples
-#' data(SNPhood, package="SNPhood")
+#' data(SNPhood.o, package="SNPhood")
 #' SNPhood.o = testForAllelicBiases (SNPhood.o, readGroups = c("maternal", "paternal"))
 #' SNPhood.o = plotAndSummarizeAllelicBiasTest(SNPhood.o)
 #' @export
@@ -1508,7 +1508,7 @@ plotAndSummarizeAllelicBiasTest  <- function(SNPhood.o,
     summary.l[["nSignificantBinsPerRegion"]]  <- signSNPperInd.m
     
     data.df = as.data.frame(summary.l[["nSignificantBinsPerRegion"]])
-    data.df = melt(data.df)
+    data.df = reshape2::melt(data.df)
     colnames(data.df) = c("Dataset", "value")
     mainLabel = paste0("Number of significant bins per region\nfor regions with at least one significant bin")
     
@@ -1527,7 +1527,7 @@ plotAndSummarizeAllelicBiasTest  <- function(SNPhood.o,
     # 3. Which region is the most significant across all individuals?
     summary2.df <- as.data.frame(rowSums(signSNPperInd.m))
     colnames(summary2.df) = c("allDatasets")
-    summary2.df = summary2.df[order(summary2.df, decreasing = TRUE),, drop = FALSE]
+    summary2.df = summary2.df[order(summary2.df$allDatasets, decreasing = TRUE),, drop = FALSE]
     
     summary.l[["significantBinsPerRegionAcrossDatasets_sum"]] = summary2.df
     
@@ -1577,7 +1577,7 @@ plotAndSummarizeAllelicBiasTest  <- function(SNPhood.o,
     
     data.df = as.data.frame(signSNPperIndBins.m)
     data.df$bin = seq_len(nBins(SNPhood.o))
-    data.melted.df = melt(data.df, id.vars = "bin")
+    data.melted.df = reshape2::melt(data.df, id.vars = "bin")
     colnames(data.melted.df) = c("Bin", "Dataset", "Count")
     
     mainLabel = paste0("Number of significant results per bin for each dataset")
@@ -2227,7 +2227,7 @@ plotGenotypesPerSNP <- function(SNPhood.o,
 #' data(SNPhood.o, package="SNPhood")
 #' SNPhood.o = testForAllelicBiases(SNPhood.o, readGroups = c("maternal", "paternal"))
 #' # Plot FDR results for first dataset
-#' plotFDRResults(SNPhood.o, annotationDatasets(SNPhood.o)[1], FDRThreshold = NULL, fileToPlot = NULL)
+#' plotFDRResults(SNPhood.o, annotationDatasets(SNPhood.o)[1])
 #' 
 #' # Plot FDR results for second dataset, save in file and also detemrine p-value treshold for which the FDR is below 10%
 #' plotFDRResults(SNPhood.o, annotationDatasets(SNPhood.o)[1], FDRThreshold = 0.1, fileToPlot = "FDR_summary.pdf")
@@ -2323,7 +2323,7 @@ plotFDRResults <- function(SNPhood.o,
 #' data(SNPhood.o, package="SNPhood")
 #' SNPhood_merged.o = mergeReadGroups(SNPhood.o)
 #' SNPhood_merged.o = plotAndCalculateWeakAndStrongGenotype(SNPhood_merged.o, nClustersVec = 6)
-#' SNPhood_merged.o = plotAndCalculateWeakAndStrongGenotype(SNPhood_merged.o, nClustersVec = 2:6, verbose = FALSE)
+#' SNPhood_merged.o = plotAndCalculateWeakAndStrongGenotype(SNPhood_merged.o, nClustersVec = 2:6)
 #' @import checkmate
 plotAndCalculateWeakAndStrongGenotype <- function(SNPhood.o, 
                                                   normalize = TRUE, 

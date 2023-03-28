@@ -379,7 +379,7 @@
         }
         # Quickly transform to a regular data frame
         chrSizes.df = data.frame(chr = chromInfo.df$chrom, 
-                                 size = as.numeric(chromInfo.df$length))
+                                 size = as.numeric(chromInfo.df$size))
         
         rownames(chrSizes.df) = chrSizes.df$chr
         
